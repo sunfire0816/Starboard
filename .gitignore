@@ -17,3 +17,12 @@ data/backups/
 
 # Unused
 uexshare.py
+
+# BSquaredTV edition build leftovers
+build_b2/
+dist_b2/
+
+# Private BSquaredTV edition (kept on your PC only)
+editions/
+run_b2.bat
+installer/build_bsquared.bat

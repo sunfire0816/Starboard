@@ -42,8 +42,10 @@ import signatures  # noqa: E402
 import ticker  # noqa: E402
 import events  # noqa: E402
 import belts  # noqa: E402
+import edition  # noqa: E402
 
-APP_TITLE = "Starboard"
+EDITION = edition.load(core.HERE)  # plain Starboard, or e.g. the BSquaredTV edition
+APP_TITLE = EDITION["name"]
 APP_VERSION = "12.7"
 POLL_MS = 400
 HEADER_H = 92
@@ -70,6 +72,17 @@ PURPLE = "#b48cff"
 TEAL = "#3fd6c8"
 
 ROW_ALT = "#0f2638"
+BTN_HOVER = "#10283a"
+ACCENT_PRESSED = "#b9660c"
+PLATE = "#071a29"
+SKY_TOP = "#080f19"
+SKY_BOTTOM = "#0b1a27"
+STAR_DIM = "#2c4a63"
+STAR_BRIGHT = "#e6f4ff"
+HAZE = "#1a3a5c"
+PLANET_DARK = "#0a2236"
+PLANET_LIGHT = "#3b8fd0"
+ON_ACCENT = "#1a0d00"  # text on orange (accent) buttons
 
 # Color modes. Each one swaps colors that carry meaning (good, warning, danger) for ones that
 # people with that kind of color vision can tell apart. Applied once at startup.
@@ -111,6 +124,7 @@ def _startup_settings():
 COLOR_MODE = _startup_settings().get("color_mode", "Default")
 if COLOR_MODE not in COLOR_MODES:
     COLOR_MODE = "Default"
+globals().update({k: v for k, v in (EDITION.get("palette") or {}).items() if k.isupper()})
 globals().update(THEMES.get(COLOR_MODE, {}))
 
 
@@ -912,7 +926,11 @@ class App:
         self._iid_to_loc = {}
 
         st0 = self._settings()
-        self.F_UI = pick_font(["Bahnschrift SemiCondensed", "Bahnschrift", "Segoe UI", "DejaVu Sans"], "TkDefaultFont")
+        edition.load_fonts(EDITION)
+        efonts = EDITION.get("fonts") or {}
+        self.F_UI = pick_font(([efonts["ui"]] if efonts.get("ui") else []) +
+                              ["Bahnschrift SemiCondensed", "Bahnschrift", "Segoe UI", "DejaVu Sans"], "TkDefaultFont")
+        self.F_TITLE = pick_font([efonts["title"]], self.F_UI) if efonts.get("title") else self.F_UI
         if st0.get("font", "Default") != "Default" and st0.get("font") in tkfont.families():
             self.F_UI = st0["font"]
         self.scale = float(st0.get("text_scale", 1.0) or 1.0)
@@ -928,7 +946,8 @@ class App:
 
         root.title(f"{APP_TITLE} {APP_VERSION}")
         try:
-            self._icon = tk.PhotoImage(file=os.path.join(core.DATA_DIR, "icon.png"))
+            self._icon = tk.PhotoImage(file=edition.path(EDITION, EDITION.get("icon")) or
+                                       os.path.join(core.DATA_DIR, "icon.png"))
             root.iconphoto(True, self._icon)
         except tk.TclError:
             pass
@@ -981,17 +1000,17 @@ class App:
         s.configure("TButton", background=PANEL_HI, foreground=CYAN, font=(ui, 9, "bold"),
                     bordercolor=CYAN_DIM, lightcolor=PANEL_HI, darkcolor=PANEL_HI,
                     borderwidth=1, padding=(10, 5), focuscolor=PANEL_HI, width=-4)
-        s.map("TButton", background=[("pressed", CYAN_FAINT), ("active", "#10283a")],
+        s.map("TButton", background=[("pressed", CYAN_FAINT), ("active", BTN_HOVER)],
               bordercolor=[("active", CYAN)], foreground=[("active", "#ffffff")])
-        s.configure("Accent.TButton", background=ORANGE, foreground="#1a0d00", font=(ui, 9, "bold"),
+        s.configure("Accent.TButton", background=ORANGE, foreground=ON_ACCENT, font=(ui, 9, "bold"),
                     bordercolor=ORANGE, lightcolor=ORANGE, darkcolor=ORANGE, borderwidth=1, padding=(10, 5),
                     focuscolor=ORANGE, width=-4)
-        s.map("Accent.TButton", background=[("pressed", "#b9660c"), ("active", ORANGE_HI)],
+        s.map("Accent.TButton", background=[("pressed", ACCENT_PRESSED), ("active", ORANGE_HI)],
               bordercolor=[("active", ORANGE_HI)], foreground=[("active", "#000000")],
               lightcolor=[("active", ORANGE_HI)], darkcolor=[("active", ORANGE_HI)])
         s.configure("Small.TButton", background=PANEL_HI, foreground=CYAN, font=(ui, 8, "bold"), padding=(6, 2),
                     bordercolor=CYAN_DIM, lightcolor=PANEL_HI, darkcolor=PANEL_HI)
-        s.map("Small.TButton", background=[("pressed", CYAN_FAINT), ("active", "#10283a")])
+        s.map("Small.TButton", background=[("pressed", CYAN_FAINT), ("active", BTN_HOVER)])
         s.configure("TNotebook", background=BG, borderwidth=0, tabmargins=(0, 0, 0, 0))
         s.configure("Main.TNotebook", background=BG, borderwidth=0, tabmargins=(0, 0, 0, 0))
         s.layout("Main.TNotebook.Tab", [])
@@ -1035,9 +1054,9 @@ class App:
             return imgs[key]
         try:
             for style, (n_f, n_b), (a_f, a_b), (p_f, p_b) in (
-                    ("TButton", (PANEL_HI, CYAN_DIM), ("#10283a", CYAN), (CYAN_FAINT, CYAN)),
-                    ("Accent.TButton", (ORANGE, ORANGE), (ORANGE_HI, ORANGE_HI), ("#b9660c", "#b9660c")),
-                    ("Small.TButton", (PANEL_HI, CYAN_DIM), ("#10283a", CYAN), (CYAN_FAINT, CYAN))):
+                    ("TButton", (PANEL_HI, CYAN_DIM), (BTN_HOVER, CYAN), (CYAN_FAINT, CYAN)),
+                    ("Accent.TButton", (ORANGE, ORANGE), (ORANGE_HI, ORANGE_HI), (ACCENT_PRESSED, ACCENT_PRESSED)),
+                    ("Small.TButton", (PANEL_HI, CYAN_DIM), (BTN_HOVER, CYAN), (CYAN_FAINT, CYAN))):
                 el = style.replace(".", "_") + "_round"
                 s.element_create(el, "image", img(el + "n", n_f, n_b),
                                  ("disabled", img(el + "d", PANEL, LINE)),
@@ -1608,7 +1627,8 @@ class App:
         self._hdr_art = None
         sizes = [90, 100, 115, 130, 150]
         pct = min(sizes, key=lambda p: abs(p - self.scale * 100))
-        path = os.path.join(self.world.data_dir, f"header_{pct}.png")
+        path = (edition.path(EDITION, EDITION["art"].format(pct=pct)) if EDITION.get("art") else None) or \
+            os.path.join(self.world.data_dir, f"header_{pct}.png")
         try:
             if os.path.isfile(path):
                 self._hdr_art = tk.PhotoImage(file=path)
@@ -1623,7 +1643,7 @@ class App:
             t = i / 13
             rr = pr + 14 - i
             c.create_oval(px - rr, py - rr, px + rr, py + rr, outline="",
-                          fill=self._mix("#0a2236", "#3b8fd0", t * 0.55))
+                          fill=self._mix(PLANET_DARK, PLANET_LIGHT, t * 0.55))
         for i in range(10):
             t = i / 9
             rr = pr - 2 - i * 6
@@ -1660,12 +1680,12 @@ class App:
             c.delete("all")
             # sky: deep navy fading to a teal glow near the horizon
             for y in range(0, h, 2):
-                c.create_rectangle(0, y, w, y + 2, outline="", fill=self._mix("#080f19", "#0b1a27", y / h))
+                c.create_rectangle(0, y, w, y + 2, outline="", fill=self._mix(SKY_TOP, SKY_BOTTOM, y / h))
             rnd = random.Random(42)
             for _ in range(int(w / 3.5)):
                 x, y = rnd.uniform(0, w), rnd.uniform(0, h - 4)
                 r = rnd.choice((0.6, 0.6, 0.8, 1.2))
-                col = self._mix("#2c4a63", "#e6f4ff", rnd.random() ** 1.5)
+                col = self._mix(STAR_DIM, STAR_BRIGHT, rnd.random() ** 1.5)
                 c.create_oval(x - r, y - r, x + r, y + r, fill=col, outline="")
             art = self._header_art()
             bw0 = int(174 * S)
@@ -1676,20 +1696,21 @@ class App:
             for i in (range(9, 0, -1) if art is None else ()):
                 rx, ry = 40 + i * 22, 8 + i * 4
                 c.create_oval(cx - rx, h * 0.45 - ry, cx + rx, h * 0.45 + ry, outline="",
-                              fill=self._mix("#06131e", "#1a3a5c", (10 - i) / 22))
+                              fill=self._mix(BG, HAZE, (10 - i) / 22))
             if art is None:
                 self._draw_header_scene(c, w, h)
             # logo plate
             pw = int(286 * S)
-            c.create_polygon(0, 0, pw - 24, 0, pw, 24, pw, h - 12, 0, h - 12, fill="#071a29", outline="",
+            c.create_polygon(0, 0, pw - 24, 0, pw, 24, pw, h - 12, 0, h - 12, fill=PLATE, outline="",
                              stipple="gray75")
             c.create_line(pw, 24, pw - 24, 0, fill=CYAN_DIM)
             c.create_line(0, h - 12, pw, h - 12, pw + 16, h - 2, w, h - 2, fill=CYAN_DIM, width=1)
             c.create_line(pw + 16, h - 2, pw + 134, h - 2, fill=ORANGE, width=2)
             c.create_rectangle(14, 16, 18, int(38 * S), fill=ORANGE, outline="")
-            c.create_text(28, 14 * S, anchor="nw", text="STARBOARD", fill="#ffffff",
-                          font=(self.F_UI, 18, "bold"))
-            c.create_text(29, 42 * S, anchor="nw", text=spaced("star citizen companion"), fill=CYAN,
+            c.create_text(28, 14 * S, anchor="nw", text=APP_TITLE.upper(), fill="#ffffff",
+                          font=(self.F_TITLE, 18, "bold"))
+            c.create_text(29, 42 * S, anchor="nw", text=spaced(EDITION.get("subtitle") or "star citizen companion"),
+                          fill=CYAN,
                           font=(self.F_UI, 7, "bold"))
         c.delete("status")
         live = self.here is not None
@@ -1697,7 +1718,7 @@ class App:
         dot = (GREEN if on else self._mix(GREEN, "#000000", 0.55)) if live else \
             (AMBER if on else self._mix(AMBER, "#000000", 0.55))
         bw = int(174 * S)
-        c.create_polygon(round_points(w - bw - 8, 10, w - 8, 10 + 40 * S, 12), smooth=True, fill="#071a29",
+        c.create_polygon(round_points(w - bw - 8, 10, w - 8, 10 + 40 * S, 12), smooth=True, fill=PLATE,
                          outline=LINE, tags="status")
         c.create_oval(w - bw + 2, 10 + 11 * S, w - bw + 10, 10 + 11 * S + 8, fill=dot, outline="", tags="status")
         gs = getattr(self, "gl_session", {}) or {}
@@ -9874,13 +9895,14 @@ class App:
         if quiet and self._settings().get("shortcut_made"):
             return
         exe = sys.executable
-        ps = ("$d=[Environment]::GetFolderPath('Desktop');$l=Join-Path $d 'Starboard.lnk';"
-              "if((Test-Path $l) -and '%s' -eq 'quiet'){exit 0};"
+        lnk = (EDITION.get("shortcut") or "Starboard").replace("'", "")
+        mode = "quiet" if quiet else "now"
+        q_exe, q_dir = exe.replace("'", "''"), os.path.dirname(exe).replace("'", "''")
+        ps = (f"$d=[Environment]::GetFolderPath('Desktop');$l=Join-Path $d '{lnk}.lnk';"
+              f"if((Test-Path $l) -and '{mode}' -eq 'quiet'){{exit 0}};"
               "$s=(New-Object -ComObject WScript.Shell).CreateShortcut($l);"
-              "$s.TargetPath='%s';$s.WorkingDirectory='%s';$s.IconLocation='%s,0';"
-              "$s.Description='Starboard, a Star Citizen companion';$s.Save()"
-              % ("quiet" if quiet else "now", exe.replace("'", "''"),
-                 os.path.dirname(exe).replace("'", "''"), exe.replace("'", "''")))
+              f"$s.TargetPath='{q_exe}';$s.WorkingDirectory='{q_dir}';$s.IconLocation='{q_exe},0';"
+              f"$s.Description='{lnk}, a Star Citizen companion';$s.Save()")
 
         def work():
             import subprocess
@@ -9913,6 +9935,11 @@ class App:
         return tuple(int(x) for x in re.findall(r"\d+", v or "")[:4]) or (0,)
 
     def _update_check(self, quiet=True):
+        if not EDITION.get("update_check", True):
+            if not quiet:
+                messagebox.showinfo(APP_TITLE, f"{APP_TITLE} is a private edition and does not check for "
+                                               "updates. Rebuild it with installer\\build.bat to update it.")
+            return
         repo = self._update_repo()
         st = self._settings()
         if quiet:
@@ -11518,7 +11545,7 @@ def show_crash(text, fatal, root=None):
             pass
     for label, fn, bg in (("COPY DETAILS", copy, ORANGE), ("OPEN LOG FOLDER", folder, PANEL_HI),
                           ("CLOSE STARBOARD" if fatal else "CLOSE", close, PANEL_HI)):
-        tk.Button(row, text=label, command=fn, bg=bg, fg="#08121c" if bg == ORANGE else CYAN, relief="flat",
+        tk.Button(row, text=label, command=fn, bg=bg, fg=ON_ACCENT if bg == ORANGE else CYAN, relief="flat",
                   activebackground=bg, font=("Segoe UI", 9, "bold"), padx=12, pady=6, bd=0,
                   cursor="hand2").pack(side="left", padx=(0, 8))
     status.pack(side="left", padx=(4, 0))
