@@ -1,0 +1,19 @@
+# Your own data never goes in the repo
+user/
+perf_on.txt
+perf_log.txt
+crash.log
+portable.txt
+
+# Build leftovers (build.bat makes these fresh)
+build/
+dist/
+*.spec
+__pycache__/
+*.pyc
+
+# Old map data backups made by updates
+data/backups/
+
+# Unused
+uexshare.py

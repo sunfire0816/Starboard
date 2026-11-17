@@ -1,0 +1,1354 @@
+{
+ "_source": "Star Citizen Wiki API (api.star-citizen.wiki) location pages, game versions 4.10.2 to 4.10.3 LIVE, collected 2026-11-14. Percent = share of deposits of that mining type on the body. Nyx belts from the same API (4.10.3); Keeger Belt partly from commodity pages.",
+ "_partial": [
+  "Clio",
+  "Keeger Belt",
+  "QV Breaker Stations",
+  "Vatra"
+ ],
+ "_no_surface_mining": [
+  "Crusader",
+  "ArcCorp",
+  "Pyro V"
+ ],
+ "bodies": {
+  "Hurston": {
+   "ship": [
+    [
+     "Aluminum",
+     44.0
+    ],
+    [
+     "Tin",
+     44.0
+    ],
+    [
+     "Ouratite",
+     10.0
+    ],
+    [
+     "Quantainium",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Beradom",
+     64.0
+    ],
+    [
+     "Glacosite",
+     32.0
+    ],
+    [
+     "Feynmaline",
+     4.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": [
+    [
+     "Prota",
+     24.39
+    ],
+    [
+     "Pitambu",
+     19.51
+    ],
+    [
+     "Golden Medmon",
+     17.07
+    ],
+    [
+     "Revenant Pod",
+     14.63
+    ],
+    [
+     "Compboard",
+     12.2
+    ],
+    [
+     "Degnous Root",
+     12.2
+    ]
+   ]
+  },
+  "Arial": {
+   "ship": [
+    [
+     "Aluminum",
+     22.0
+    ],
+    [
+     "Corundum",
+     22.0
+    ],
+    [
+     "Hephaestanite",
+     22.0
+    ],
+    [
+     "Tin",
+     22.0
+    ],
+    [
+     "Ouratite",
+     10.0
+    ],
+    [
+     "Quantainium",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Feynmaline",
+     52.0
+    ],
+    [
+     "Glacosite",
+     32.0
+    ],
+    [
+     "Beradom",
+     16.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": [
+    [
+     "Prota",
+     100.0
+    ]
+   ]
+  },
+  "Aberdeen": {
+   "ship": [
+    [
+     "Corundum",
+     29.8
+    ],
+    [
+     "Aluminum",
+     29.7
+    ],
+    [
+     "Titanium",
+     28.5
+    ],
+    [
+     "Ouratite",
+     10.0
+    ],
+    [
+     "Quantainium",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Feynmaline",
+     64.0
+    ],
+    [
+     "Glacosite",
+     32.0
+    ],
+    [
+     "Beradom",
+     4.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Magda": {
+   "ship": [
+    [
+     "Aluminum",
+     34.8
+    ],
+    [
+     "Iron",
+     34.8
+    ],
+    [
+     "Aslarite",
+     14.2
+    ],
+    [
+     "Titanium",
+     14.2
+    ],
+    [
+     "Quantainium",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Glacosite",
+     59.26
+    ],
+    [
+     "Feynmaline",
+     37.04
+    ],
+    [
+     "Beradom",
+     3.7
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Ita": {
+   "ship": [
+    [
+     "Tin",
+     34.8
+    ],
+    [
+     "Aluminum",
+     34.7
+    ],
+    [
+     "Aslarite",
+     28.5
+    ],
+    [
+     "Quantainium",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Glacosite",
+     69.23
+    ],
+    [
+     "Feynmaline",
+     26.92
+    ],
+    [
+     "Beradom",
+     3.85
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Cellin": {
+   "ship": [
+    [
+     "Agricium",
+     28.5
+    ],
+    [
+     "Silicon",
+     25.8
+    ],
+    [
+     "Quartz",
+     25.7
+    ],
+    [
+     "Taranite",
+     18.0
+    ],
+    [
+     "Quantainium",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Beradom",
+     56.0
+    ],
+    [
+     "Glacosite",
+     32.0
+    ],
+    [
+     "Feynmaline",
+     12.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Daymar": {
+   "ship": [
+    [
+     "Silicon",
+     34.8
+    ],
+    [
+     "Quartz",
+     34.7
+    ],
+    [
+     "Agricium",
+     28.5
+    ],
+    [
+     "Quantainium",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Beradom",
+     48.0
+    ],
+    [
+     "Feynmaline",
+     40.0
+    ],
+    [
+     "Glacosite",
+     12.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": [
+    [
+     "Revenant Pod",
+     100.0
+    ]
+   ]
+  },
+  "Yela": {
+   "ship": [
+    [
+     "Agricium",
+     28.5
+    ],
+    [
+     "Silicon",
+     25.8
+    ],
+    [
+     "Quartz",
+     25.7
+    ],
+    [
+     "Taranite",
+     18.0
+    ],
+    [
+     "Quantainium",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Glacosite",
+     68.0
+    ],
+    [
+     "Beradom",
+     24.0
+    ],
+    [
+     "Feynmaline",
+     8.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Lyria": {
+   "ship": [
+    [
+     "Copper",
+     34.77
+    ],
+    [
+     "Iron",
+     34.77
+    ],
+    [
+     "Laranite",
+     28.47
+    ],
+    [
+     "Quantainium",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Beradom",
+     48.0
+    ],
+    [
+     "Glacosite",
+     48.0
+    ],
+    [
+     "Feynmaline",
+     4.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     61.1
+    ],
+    [
+     "Dolivine",
+     36.9
+    ],
+    [
+     "Janalite",
+     2.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Wala": {
+   "ship": [
+    [
+     "Laranite",
+     28.5
+    ],
+    [
+     "Copper",
+     25.8
+    ],
+    [
+     "Iron",
+     25.7
+    ],
+    [
+     "Beryl",
+     18.0
+    ],
+    [
+     "Quantainium",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Beradom",
+     56.0
+    ],
+    [
+     "Glacosite",
+     40.0
+    ],
+    [
+     "Feynmaline",
+     4.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     61.1
+    ],
+    [
+     "Dolivine",
+     36.9
+    ],
+    [
+     "Janalite",
+     2.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "microTech": {
+   "ship": [
+    [
+     "Hephaestanite",
+     32.7
+    ],
+    [
+     "Ice",
+     32.7
+    ],
+    [
+     "Iron",
+     32.6
+    ],
+    [
+     "Quantainium",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Glacosite",
+     68.0
+    ],
+    [
+     "Beradom",
+     28.0
+    ],
+    [
+     "Feynmaline",
+     4.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     61.1
+    ],
+    [
+     "Dolivine",
+     36.9
+    ],
+    [
+     "Janalite",
+     2.0
+    ]
+   ],
+   "harvestable": [
+    [
+     "Golden Medmon",
+     24.69
+    ],
+    [
+     "Heart of the Woods",
+     24.69
+    ],
+    [
+     "Pitambu",
+     24.69
+    ],
+    [
+     "Sunset Berries",
+     24.69
+    ],
+    [
+     "Degnous Root",
+     1.23
+    ]
+   ]
+  },
+  "Calliope": {
+   "ship": [
+    [
+     "Iron",
+     32.73
+    ],
+    [
+     "Hephaestanite",
+     32.63
+    ],
+    [
+     "Ice",
+     32.63
+    ],
+    [
+     "Quantainium",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Glacosite",
+     84.0
+    ],
+    [
+     "Beradom",
+     12.0
+    ],
+    [
+     "Feynmaline",
+     4.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     61.1
+    ],
+    [
+     "Dolivine",
+     36.9
+    ],
+    [
+     "Janalite",
+     2.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Clio": {
+   "ship": [
+    [
+     "Copper",
+     40.0
+    ],
+    [
+     "Ice",
+     40.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Glacosite",
+     68.0
+    ],
+    [
+     "Beradom",
+     20.0
+    ],
+    [
+     "Feynmaline",
+     12.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     61.1
+    ],
+    [
+     "Dolivine",
+     36.9
+    ]
+   ],
+   "harvestable": []
+  },
+  "Euterpe": {
+   "ship": [
+    [
+     "Copper",
+     40.0
+    ],
+    [
+     "Ice",
+     40.0
+    ],
+    [
+     "Taranite",
+     18.0
+    ],
+    [
+     "Quantainium",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Glacosite",
+     88.0
+    ],
+    [
+     "Beradom",
+     12.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     61.1
+    ],
+    [
+     "Dolivine",
+     36.9
+    ],
+    [
+     "Janalite",
+     2.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Pyro I": {
+   "ship": [
+    [
+     "Iron",
+     32.73
+    ],
+    [
+     "Copper",
+     32.63
+    ],
+    [
+     "Tin",
+     32.63
+    ],
+    [
+     "Stileron",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Beradom",
+     100.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": [
+    [
+     "Decari Pod",
+     46.15
+    ],
+    [
+     "Fotia Seedpod",
+     30.77
+    ],
+    [
+     "Wuotan",
+     23.08
+    ]
+   ]
+  },
+  "Monox": {
+   "ship": [
+    [
+     "Hephaestanite",
+     32.73
+    ],
+    [
+     "Iron",
+     32.63
+    ],
+    [
+     "Tin",
+     32.63
+    ],
+    [
+     "Stileron",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Glacosite",
+     100.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": [
+    [
+     "Pingala Seeds",
+     100.0
+    ]
+   ]
+  },
+  "Bloom": {
+   "ship": [
+    [
+     "Iron",
+     35.0
+    ],
+    [
+     "Quartz",
+     35.0
+    ],
+    [
+     "Borase",
+     18.0
+    ],
+    [
+     "Riccite",
+     10.0
+    ],
+    [
+     "Stileron",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Beradom",
+     100.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     61.1
+    ],
+    [
+     "Dolivine",
+     36.9
+    ],
+    [
+     "Janalite",
+     2.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Pyro IV": {
+   "ship": [
+    [
+     "Laranite",
+     28.53
+    ],
+    [
+     "Copper",
+     25.73
+    ],
+    [
+     "Iron",
+     25.73
+    ],
+    [
+     "Borase",
+     18.02
+    ],
+    [
+     "Stileron",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Feynmaline",
+     100.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": [
+    [
+     "Amiant",
+     50.0
+    ],
+    [
+     "Flareweed",
+     50.0
+    ]
+   ]
+  },
+  "Terminus": {
+   "ship": [
+    [
+     "Titanium",
+     28.5
+    ],
+    [
+     "Ice",
+     20.8
+    ],
+    [
+     "Copper",
+     20.5
+    ],
+    [
+     "Iron",
+     20.5
+    ],
+    [
+     "Gold",
+     18.0
+    ],
+    [
+     "Agricium",
+     14.2
+    ],
+    [
+     "Ouratite",
+     10.0
+    ],
+    [
+     "Riccite",
+     10.0
+    ],
+    [
+     "Stileron",
+     2.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Feynmaline",
+     100.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     61.1
+    ],
+    [
+     "Dolivine",
+     36.9
+    ],
+    [
+     "Janalite",
+     2.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Ignis": {
+   "ship": [
+    [
+     "Silicon",
+     36.0
+    ],
+    [
+     "Tin",
+     36.0
+    ],
+    [
+     "Gold",
+     18.0
+    ],
+    [
+     "Riccite",
+     10.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Feynmaline",
+     100.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Vatra": {
+   "ship": [],
+   "vehicle": [
+    [
+     "Beradom",
+     50.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Adir": {
+   "ship": [
+    [
+     "Iron",
+     43.5
+    ],
+    [
+     "Tungsten",
+     28.5
+    ],
+    [
+     "Borase",
+     18.0
+    ],
+    [
+     "Riccite",
+     10.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Glacosite",
+     100.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Fairo": {
+   "ship": [
+    [
+     "Tungsten",
+     28.5
+    ],
+    [
+     "Silicon",
+     26.8
+    ],
+    [
+     "Iron",
+     26.7
+    ],
+    [
+     "Bexalite",
+     9.0
+    ],
+    [
+     "Gold",
+     9.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Beradom",
+     100.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Fuego": {
+   "ship": [
+    [
+     "Aslarite",
+     28.5
+    ],
+    [
+     "Iron",
+     26.8
+    ],
+    [
+     "Hephaestanite",
+     26.7
+    ],
+    [
+     "Bexalite",
+     9.0
+    ],
+    [
+     "Borase",
+     9.0
+    ]
+   ],
+   "vehicle": [
+    [
+     "Feynmaline",
+     100.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     61.1
+    ],
+    [
+     "Dolivine",
+     36.9
+    ],
+    [
+     "Janalite",
+     2.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Vuur": {
+   "ship": [
+    [
+     "Hephaestanite",
+     26.8
+    ],
+    [
+     "Iron",
+     26.8
+    ],
+    [
+     "Bexalite",
+     18.0
+    ],
+    [
+     "Agricium",
+     14.2
+    ],
+    [
+     "Aslarite",
+     14.2
+    ]
+   ],
+   "vehicle": [
+    [
+     "Glacosite",
+     100.0
+    ]
+   ],
+   "hand": [
+    [
+     "Aphorite",
+     58.6
+    ],
+    [
+     "Dolivine",
+     35.4
+    ],
+    [
+     "Hadanite",
+     6.0
+    ]
+   ],
+   "harvestable": []
+  },
+  "Glaciem Ring": {
+   "ship": [
+    [
+     "Torite",
+     28.5
+    ],
+    [
+     "Iron",
+     20.75
+    ],
+    [
+     "Ice",
+     20.75
+    ],
+    [
+     "Bexalite",
+     18
+    ],
+    [
+     "Lindinium",
+     10
+    ],
+    [
+     "Savrilium",
+     2
+    ]
+   ],
+   "vehicle": [],
+   "hand": [],
+   "harvestable": []
+  },
+  "Keeger Belt": {
+   "ship": [
+    [
+     "Ice",
+     20.75
+    ],
+    [
+     "Bexalite",
+     18
+    ],
+    [
+     "Lindinium",
+     10
+    ],
+    [
+     "Savrilium",
+     2
+    ]
+   ],
+   "vehicle": [],
+   "hand": [],
+   "harvestable": []
+  },
+  "QV Breaker Stations": {
+   "ship": [],
+   "vehicle": [],
+   "hand": [
+    [
+     "Sadaryx",
+     null
+    ]
+   ],
+   "harvestable": []
+  }
+ },
+ "_zones": {
+  "Glaciem Ring": {
+   "system": "Nyx",
+   "kind": "ring",
+   "radius_km": 15000000,
+   "half_width_km": 1500000,
+   "note": "Asteroid ring around Nyx, home of Delamar and Levski."
+  },
+  "Keeger Belt": {
+   "system": "Nyx",
+   "kind": "ring",
+   "radius_km": 48000000,
+   "half_width_km": 3000000,
+   "note": "Outer Nyx belt. Ship-mining list is partial."
+  },
+  "QV Breaker Stations": {
+   "system": "Nyx",
+   "kind": "locations",
+   "match": "QV Breaker Station",
+   "note": "Sadaryx is hand-mined in the cave sections of these stations (mission-based)."
+  }
+ }
+}

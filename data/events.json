@@ -1,0 +1,31 @@
+{
+  "updated": "2026-11-16",
+  "note": "Major Star Citizen events. confirmed = dates announced by RSI. expected = a yearly event whose dates are not announced yet; the dates follow its usual timing.",
+  "events": [
+    {"name": "IAE 2956", "start": "2026-11-13", "end": "2026-11-27", "kind": "expo", "status": "confirmed",
+     "free_fly": true,
+     "about": "Intergalactic Aerospace Expo at the Tobin Expo Center in New Babbage, microTech. Free to play for the whole show, with 200+ ships and vehicles to try. A different manufacturer each day.",
+     "url": "https://robertsspaceindustries.com/community-hub/events"},
+    {"name": "IAE Best in Show", "start": "2026-11-22", "end": "2026-11-22", "kind": "expo", "status": "confirmed",
+     "about": "Best in Show day at IAE 2956.", "url": "https://robertsspaceindustries.com/community-hub/events"},
+    {"name": "IAE Finale", "start": "2026-11-23", "end": "2026-11-27", "kind": "expo", "status": "confirmed",
+     "about": "Every IAE ship and vehicle is out to try at once. The best days for free rentals.",
+     "url": "https://robertsspaceindustries.com/community-hub/events"},
+    {"name": "Luminalia 2956", "start": "2026-12-10", "end": "2027-01-05", "kind": "holiday", "status": "expected",
+     "about": "The winter festival of lights, shared by humans and the Banu. Usually starts mid-December with daily gifts and holiday missions. Luminalia day itself is December 22.",
+     "url": "https://robertsspaceindustries.com/comm-link"},
+    {"name": "Luminalia day", "start": "2026-12-22", "end": "2026-12-22", "kind": "holiday", "status": "confirmed",
+     "about": "Luminalia is celebrated every year on December 22 in the game's lore.",
+     "url": "https://robertsspaceindustries.com/comm-link"},
+    {"name": "Daymar Rally 2957", "start": "2027-01-23", "end": "2027-01-23", "kind": "community", "status": "expected",
+     "about": "The yearly endurance race across Daymar, run by ATMO Esports with a live broadcast. Usually late January; sign-ups open in December.",
+     "url": "https://robertsspaceindustries.com/comm-link"},
+    {"name": "Red Festival 2957", "start": "2027-02-06", "end": "2027-02-28", "kind": "holiday", "status": "expected",
+     "about": "Lunar New Year in the 'verse: red envelopes and festival rewards. Lunar New Year 2027 is February 6.",
+     "url": "https://robertsspaceindustries.com/comm-link"},
+    {"name": "Coramor 2957", "start": "2027-02-11", "end": "2027-02-23", "kind": "holiday", "status": "expected",
+     "free_fly": true,
+     "about": "The 'verse's Valentine's festival, held every year on February 11. Last year it came with the year's first Free Fly.",
+     "url": "https://robertsspaceindustries.com/comm-link"}
+  ]
+}
