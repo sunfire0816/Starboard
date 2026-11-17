@@ -4,7 +4,8 @@ Experimental screen reader for scan signatures (Windows 10/11 only).
 Uses the text recognition built into Windows (Windows.Media.Ocr) through
 Windows PowerShell, so nothing extra has to be installed. One PowerShell
 process runs in the background: it captures the screen area you picked,
-enlarges it, reads the text and prints it. This module starts and stops that
+enlarges it, reads it twice (as is, and as a cleaned-up high-contrast copy that
+is never shown) and prints both readings. This module starts and stops that
 process and hands each line of text to a callback.
 """
 
@@ -14,7 +15,7 @@ import sys
 import threading
 
 PS_SCRIPT = r"""
-param([int]$X, [int]$Y, [int]$W, [int]$H, [int]$IntervalMs = 700, [int]$Scale = 2)
+param([int]$X, [int]$Y, [int]$W, [int]$H, [int]$IntervalMs = 700, [int]$Scale = 0)
 $ErrorActionPreference = 'Stop'
 try {
     Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class SCLDpi { [DllImport("user32.dll")] public static extern bool SetProcessDPIAware(); }'
@@ -34,28 +35,51 @@ try {
     }
     $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
     if ($null -eq $engine) { throw 'Windows text recognition is not available for your language.' }
+    # enlarge small areas more (Windows reads up to 2600 pixels a side)
+    if ($Scale -le 0) { $Scale = [Math]::Max(1, [Math]::Min(4, [Math]::Floor(2600 / [Math]::Max($W, $H)))) }
+    # cleaned copy: gray, strong contrast, light text turned dark on white, then cut to pure black and white
+    $c = 2.4; $o = 0.5 * ($c - 1)
+    $cm = New-Object System.Drawing.Imaging.ColorMatrix(,[single[][]]@(
+        [single[]]@(-0.299 * $c, -0.299 * $c, -0.299 * $c, 0, 0),
+        [single[]]@(-0.587 * $c, -0.587 * $c, -0.587 * $c, 0, 0),
+        [single[]]@(-0.114 * $c, -0.114 * $c, -0.114 * $c, 0, 0),
+        [single[]]@(0, 0, 0, 1, 0),
+        [single[]]@((1 + $o), (1 + $o), (1 + $o), 0, 1)))
+    $attr = New-Object System.Drawing.Imaging.ImageAttributes
+    $attr.SetColorMatrix($cm)
+    $attr.SetThreshold(0.6)
+    function ReadBitmap($b) {
+        $ms = New-Object System.IO.MemoryStream
+        $b.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
+        [void]$ms.Seek(0, 'Begin')
+        $ras = [System.IO.WindowsRuntimeStreamExtensions]::AsRandomAccessStream($ms)
+        $dec = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($ras)) ([Windows.Graphics.Imaging.BitmapDecoder])
+        $sb = Await ($dec.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
+        $res = Await ($engine.RecognizeAsync($sb)) ([Windows.Media.Ocr.OcrResult])
+        $sb.Dispose(); $ms.Dispose()
+        ($res.Lines | ForEach-Object { $_.Text }) -join ' / '
+    }
     [Console]::Out.WriteLine('READY|ok'); [Console]::Out.Flush()
     while ($true) {
         $bmp = New-Object System.Drawing.Bitmap $W, $H
         $g = [System.Drawing.Graphics]::FromImage($bmp)
         $g.CopyFromScreen($X, $Y, 0, 0, $bmp.Size)
         $g.Dispose()
-        $big = New-Object System.Drawing.Bitmap ($W * $Scale), ($H * $Scale)
+        $BW = $W * $Scale; $BH = $H * $Scale
+        $big = New-Object System.Drawing.Bitmap $BW, $BH
         $g2 = [System.Drawing.Graphics]::FromImage($big)
         $g2.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-        $g2.DrawImage($bmp, 0, 0, $W * $Scale, $H * $Scale)
+        $g2.DrawImage($bmp, 0, 0, $BW, $BH)
         $g2.Dispose(); $bmp.Dispose()
-        $ms = New-Object System.IO.MemoryStream
-        $big.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
-        $big.Dispose()
-        [void]$ms.Seek(0, 'Begin')
-        $ras = [System.IO.WindowsRuntimeStreamExtensions]::AsRandomAccessStream($ms)
-        $dec = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($ras)) ([Windows.Graphics.Imaging.BitmapDecoder])
-        $sb = Await ($dec.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
-        $res = Await ($engine.RecognizeAsync($sb)) ([Windows.Media.Ocr.OcrResult])
-        $text = ($res.Lines | ForEach-Object { $_.Text }) -join ' / '
-        [Console]::Out.WriteLine('OCR|' + $text); [Console]::Out.Flush()
-        $sb.Dispose(); $ms.Dispose()
+        $clean = New-Object System.Drawing.Bitmap $BW, $BH
+        $g3 = [System.Drawing.Graphics]::FromImage($clean)
+        $g3.DrawImage($big, (New-Object System.Drawing.Rectangle 0, 0, $BW, $BH), 0, 0, $BW, $BH,
+                      [System.Drawing.GraphicsUnit]::Pixel, $attr)
+        $g3.Dispose()
+        $t1 = ReadBitmap $big
+        $t2 = ReadBitmap $clean
+        $big.Dispose(); $clean.Dispose()
+        [Console]::Out.WriteLine('OCR|' + $t1 + ' || ' + $t2); [Console]::Out.Flush()
         Start-Sleep -Milliseconds $IntervalMs
     }
 } catch {

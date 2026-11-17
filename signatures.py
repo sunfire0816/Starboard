@@ -168,15 +168,30 @@ def _share(items, name):
     return None
 
 
-_NUM_RE = re.compile(r"(?<![\d.])(\d{1,3}(?:[ ,.]\d{3})+|\d{4,6})(?![\d])")
+# Letters the text reader often mistakes for digits, fixed only inside a number
+_LOOKALIKE = str.maketrans({"O": "0", "o": "0", "D": "0", "Q": "0", "I": "1", "l": "1", "|": "1", "!": "1",
+                            "i": "1", "S": "5", "s": "5", "B": "8", "Z": "2", "z": "2", "G": "6"})
+_TOKEN_RE = re.compile(r"[0-9OoDQIl|!iSsBZzG]+(?:[,.'\u2019`][0-9OoDQIl|!iSsBZzG]+)*")
+# a thousands separator may be read as a comma, period, apostrophe or space, with stray spaces around it
+_NUM_RE = re.compile(r"(?<![\d.])(\d{1,3}(?:\s?[,.'\u2019`]\s?\d{3}|\s\d{3})+|\d{4,6})(?!\d)")
+
+
+def _fix_lookalikes(text):
+    """Turn O into 0, I into 1 and so on, but only in words that hold a real digit and read as a signature."""
+    def fix(m):
+        w = m.group(0)
+        t = w.translate(_LOOKALIKE)
+        # needs a real digit, and enough digits once fixed to be a signature
+        return t if any(ch.isdigit() for ch in w) and sum(ch.isdigit() for ch in t) >= 4 else w
+    return _TOKEN_RE.sub(fix, text or "")
 
 
 def numbers_in_text(text):
     """Signature-sized numbers (1,000 to 999,999) found in OCR or pasted text."""
     out = []
-    for m in _NUM_RE.finditer(text or ""):
-        v = int(re.sub(r"[ ,.]", "", m.group(1)))
-        if 1000 <= v <= 999999:
+    for m in _NUM_RE.finditer(_fix_lookalikes(text)):
+        v = int(re.sub(r"[^\d]", "", m.group(1)))
+        if 1000 <= v <= 999999 and v not in out:
             out.append(v)
     return out
 

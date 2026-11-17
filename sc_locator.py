@@ -2788,9 +2788,15 @@ class App:
 
     def _handle_ocr(self, text):
         nums = signatures.numbers_in_text(text)
-        seen = f"Sees: {text[:60]}" if text.strip() else "Sees: nothing"
+        raw = text.split(" || ")[0].strip() or text.replace(" || ", " ").strip()
+        seen = f"Sees: {', '.join(f'{v:,}' for v in nums[:3])}" if nums else \
+            (f"Sees: {raw[:60]}" if raw else "Sees: nothing")
         self.lbl_reader.configure(text=seen, fg=MUTED)
+        # take a number only once two reads in a row agree, so a one-off misread is ignored
+        prev, self._ocr_prev = getattr(self, "_ocr_prev", set()), set(nums)
         for v in nums:
+            if v not in prev:
+                continue
             res = self.sigdb.identify(v, self.world, self.here, self.sig_mode.get(), limit=1)
             if res and res[0]["exact"]:
                 last_v, last_t = self._last_screen_sig
