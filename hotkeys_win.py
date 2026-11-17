@@ -133,6 +133,8 @@ if IS_WINDOWS:
     kernel32.Process32FirstW.argtypes = (wintypes.HANDLE, ctypes.POINTER(PROCESSENTRY32W))
     kernel32.Process32NextW.argtypes = (wintypes.HANDLE, ctypes.POINTER(PROCESSENTRY32W))
     kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel32.CreateMutexW.argtypes = (ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR)
+    kernel32.CreateMutexW.restype = wintypes.HANDLE
     kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
     advapi32.OpenProcessToken.argtypes = (wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE))
     advapi32.GetTokenInformation.argtypes = (wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD,
@@ -307,6 +309,29 @@ def send_chat_command(command, chat_open_wait=0.25, key_delay=0.03, hold=0.03):
     time.sleep(0.06)
     sent += press_enter(hold)
     return sent
+
+
+# ---------------------------------------------------------------- one owner
+_owner = None
+
+
+def claim_hotkeys():
+    """Only one running Starboard (any edition) may watch the F-keys, or each copy
+    would type /showlocation at the same time and the letters get mixed together.
+    Returns True when this copy owns the hotkeys. Windows frees the claim when the
+    owning copy closes, so the other copy can take over on its next try."""
+    global _owner
+    if _owner or not IS_WINDOWS:
+        return True
+    h = kernel32.CreateMutexW(None, False, "Local\\StarboardHotkeys")
+    err = ctypes.get_last_error()
+    if not h:
+        return False  # access denied: an administrator copy owns it
+    if err == 183:  # ERROR_ALREADY_EXISTS
+        kernel32.CloseHandle(h)
+        return False
+    _owner = h
+    return True
 
 
 # ---------------------------------------------------------------- hotkeys

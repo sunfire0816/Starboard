@@ -2824,6 +2824,16 @@ class App:
         if not self.hk_enabled.get():
             self.lbl_hk.configure(text="Hotkeys are off.", fg=MUTED)
             return
+        if not hotkeys_win.claim_hotkeys():
+            if not getattr(self, "_hk_wait_logged", False):
+                hotkeys_win.log("another Starboard owns the hotkeys; waiting")
+                self._hk_wait_logged = True
+            self.lbl_hk.configure(fg=AMBER, text="Another Starboard window is open and handles F8, F9 and F10. "
+                                                 "Close it and the hotkeys move to this window.")
+            if getattr(self, "_hk_retry", None):
+                self.root.after_cancel(self._hk_retry)
+            self._hk_retry = self.root.after(3000, self._hk_try_again)
+            return
         self._hk_actions = {}
         for action, spec in self._hotkey_map().items():
             parsed = hotkeys_win.parse_hotkey(spec)
@@ -2843,6 +2853,11 @@ class App:
             self.lbl_hk.configure(fg=MUTED, text="Ready. Press F9 in game; this line shows what happened. " + admin)
         self.root.after(100, self._poll_hotkeys)
         self.root.after(2000, self._check_game_elevation)
+
+    def _hk_try_again(self):
+        self._hk_retry = None
+        if self.hk is None and self.hk_enabled.get():
+            self._start_hotkeys()
 
     def _check_game_elevation(self):
         """Warn when the game runs as administrator but this app does not: Windows then
