@@ -6,11 +6,11 @@ A bigger update for salvagers, plus a fix for the screen reader.
 
 The SALVAGE tab now has six parts:
 
-- **HOLD:** a salvage ledger for your ship. Pick your ship, then add each load of RMC, CM or scrap as you collect it. See how full you are, what the load is worth and your aUEC per hour. Click **SOLD IT** when you sell. The overlay can show your hold too (SETTINGS > OVERLAY > SALVAGE HOLD).
+- **HOLD:** a salvage ledger for your ship, or your mothership. It knows each salvage ship's buffer and cargo grid (Salvation 8 + 6 SCU, Vulture 16 + 12, Fortune 14 + 16, MOTH 240 + 224, Reclaimer 448 + 420), and works with any ship from MY SHIPS. Add RMC, CM and scrap as you collect it, plus the cargo boxes and components you pull off wrecks. See how full you are, what it's worth and your aUEC per hour. Sell it in parts at different terminals with **SOLD SOME**; the trip goes to RUNS when the hold is empty. The overlay can show your hold too.
 - **SPOTS:** scrapyards, wrecks, derelict outposts and the places salvage contracts send you. It marks which ones buy salvage and which contract sites are illegal.
 - **CONTRACTS:** every salvage contract in the game from the Star Citizen Wiki, legal and illegal, with who gives it and what it is.
-- **SELL:** sell a whole load. Type your RMC, CM and scrap (or click FROM HOLD) to see what each terminal pays for all of it, the best single stop, whether two stops pay more, and when a terminal can't take that much.
-- **RUNS:** every salvage run you sold, with SCU, aUEC, time and aUEC per hour, plus totals for today, the last 7 days and all time.
+- **SELL:** plan where to sell a whole load, cargo boxes included. It respects how much each terminal takes right now and gives you a list of stops, for the most aUEC or the fewest stops.
+- **RUNS:** every salvage trip, with each stop, SCU, aUEC, time and aUEC per hour, plus totals for today, the last 7 days and all time.
 - **SETUP:** salvage ships with their heads and stock modules, every scraper module compared (speed, beam size, how much material it keeps, price and where to buy), and module picks for your goal.
 
 ## Fixed

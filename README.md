@@ -188,15 +188,20 @@ The list counts down to each job. When one is ready, you get a message in the ap
 
 ## Salvage (SALVAGE tab)
 
-**HOLD** is your salvage ledger for the ship you are flying. Pick your salvage ship (it fills in how much it holds), then each time you collect some, type the SCU and click **RMC**, **CM** or **SCRAP**. **SET EXACT** sets each one to what your ship shows. The card shows how full you are, what the load is worth at today's best prices and how much you are making per hour. The overlay can show it too (SETTINGS > OVERLAY > SALVAGE HOLD). When you sell, click **SOLD IT**: the run goes to RUNS and your ledger, and the hold empties.
+**HOLD** is your salvage ledger. Pick your ship: it fills in the salvage buffer (what the ship holds inside before you box it out) and the cargo grid, so a Salvation shows 8 + 6 SCU and a Reclaimer 448 + 420. Any ship from MY SHIPS works too, so if you live on a mothership, pick it and add whatever your other ships bring back.
+
+- **Salvage:** type the SCU you collected and click **RMC**, **CM** or **SCRAP**. **SET EXACT** sets each one to what your ship shows.
+- **From a wreck:** add cargo boxes you pulled off (pick the commodity) and ship components (name, how many, and what each is worth if you know).
+- **The card** shows how full you are, what everything is worth at today's best prices, how long the trip has run and aUEC per hour. Breaks longer than 30 minutes don't count, so a trip over several days still shows a fair rate. The overlay can show it too (SETTINGS > OVERLAY > SALVAGE HOLD).
+- **Selling:** you rarely sell a big load in one place. **SOLD SOME** takes what you sold at one terminal out of the hold and keeps the sale; **SOLD ALL** sells what's left. When the hold is empty the whole trip, every stop included, goes to RUNS and your ledger.
 
 **SPOTS** lists scrapyards, wrecks, derelict outposts and the places salvage contracts send you, closest first. It marks the ones that buy salvage and the illegal contract sites. Double-click to fly there.
 
 **CONTRACTS** lists every salvage contract in the game from the Star Citizen Wiki, legal and illegal, with who gives it and what it is.
 
-**SELL** takes your whole load (RMC, CM and scrap, or **FROM HOLD**) and shows what each terminal pays for all of it, the best single stop, whether splitting it over two stops pays more, and when a terminal can't take that much. **LOG SALE** saves the sale.
+**SELL** plans where to sell the whole load: RMC, CM and scrap, or **FROM HOLD** to include your cargo boxes. Each terminal shows what it pays for what it takes right now. The plan card shows the one stop that takes it all if there is one, otherwise a list of stops: **Most aUEC** sends each material to the best price first, **Fewest stops** uses as few terminals as it can. Anything nobody nearby buys is listed. **LOG SALE** after you sell at the selected terminal.
 
-**RUNS** keeps every salvage run: what you sold, what it paid, how long it took and aUEC per hour, with totals for today, the last 7 days and all time.
+**RUNS** keeps every salvage trip: what you sold, where, what it paid, how long it took and aUEC per hour, with totals for today, the last 7 days and all time.
 
 **SETUP** shows each salvage ship's heads and stock modules, compares every scraper module (speed, beam size, how much material it keeps, price and where to buy) and suggests modules for your goal: the most material per hull, big hulls quickly, or a balance.
 

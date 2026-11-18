@@ -136,7 +136,8 @@
       "ReadyGrip Tractor Module"
      ]
     }
-   ]
+   ],
+   "buffer": 16
   },
   {
    "name": "MISC Fortune",
@@ -151,7 +152,8 @@
       "ReadyGrip Tractor Module"
      ]
     }
-   ]
+   ],
+   "buffer": 14
   },
   {
    "name": "MOTH",
@@ -180,7 +182,8 @@
       "Abrade Scraper Module"
      ]
     }
-   ]
+   ],
+   "buffer": 240
   },
   {
    "name": "Reclaimer",
@@ -202,7 +205,8 @@
       "Trawler Scraper Module"
      ]
     }
-   ]
+   ],
+   "buffer": 448
   },
   {
    "name": "Salvation",
@@ -222,7 +226,8 @@
       "Hart Scraper Module"
      ]
     }
-   ]
+   ],
+   "buffer": 8
   }
  ],
  "contract_sites": {

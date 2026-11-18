@@ -114,7 +114,16 @@ def describe_module(m):
 
 
 # ------------------------------------------------------------------ hold and runs
+ACTIVE_GAP = 30 * 60   # a gap longer than this between entries is a break, not salvage time
+
+
 class Store:
+    """Your hold: salvage materials, cargo boxes and components you pulled off wrecks.
+
+    A trip runs from the first thing you add until the hold is empty again. You can sell
+    it in parts at different terminals; each sale is kept with the trip, and the finished
+    trip goes to the runs list."""
+
     def __init__(self, user_dir):
         self.path = os.path.join(user_dir, "salvage.json")
         try:
@@ -123,8 +132,11 @@ class Store:
         except Exception:
             d = {}
         self.hold = d.get("hold") or {}
-        self.hold.setdefault("mats", {})
-        self.hold.setdefault("adds", [])
+        h = self.hold
+        if "grid" not in h and h.get("cap"):  # from 12.8 test builds
+            h["grid"] = h.pop("cap")
+        for k, v in (("mats", {}), ("cargo", {}), ("parts", []), ("adds", []), ("sales", [])):
+            h.setdefault(k, v)
         self.runs = d.get("runs") or []
 
     def save(self):
@@ -134,56 +146,157 @@ class Store:
             json.dump({"hold": self.hold, "runs": self.runs}, f, indent=1)
         os.replace(tmp, self.path)
 
-    # -- the hold
+    # -- what is in it
     def amount(self, key):
         return float(self.hold["mats"].get(key) or 0)
 
-    def total(self):
+    def salvage_scu(self):
         return sum(self.amount(k) for k, _n, _s in MATERIALS)
 
-    def _touch(self):
+    def cargo_scu(self):
+        return sum(float(v or 0) for v in self.hold["cargo"].values())
+
+    def total(self):
+        """SCU in the ship: salvage material plus cargo boxes (components are not counted)."""
+        return self.salvage_scu() + self.cargo_scu()
+
+    def empty(self):
+        return not self.total() and not self.hold["parts"]
+
+    def capacity(self):
+        """(salvage buffer, cargo grid, total) in SCU, any of them may be 0 when unknown."""
+        b, g = float(self.hold.get("buffer") or 0), float(self.hold.get("grid") or 0)
+        return b, g, b + g
+
+    def load(self):
+        """{commodity name: SCU} for everything that sells by the SCU."""
+        out = {MAT_NAME[k]: self.amount(k) for k, _n, _s in MATERIALS if self.amount(k)}
+        for n, v in self.hold["cargo"].items():
+            if v:
+                out[n] = out.get(n, 0) + float(v)
+        return out
+
+    # -- changing it
+    def _log(self, what, amount, where):
         if not self.hold.get("started"):
             self.hold["started"] = time.time()
+        self.hold["adds"].append({"ts": time.time(), "what": what, "amount": round(amount, 3), "where": where})
+        self.hold["adds"] = self.hold["adds"][-300:]
 
     def add(self, key, scu, where=""):
-        """Add (or with a negative number, take away) SCU of one material."""
-        new = max(0.0, self.amount(key) + scu)
-        self._touch()
-        self.hold["mats"][key] = round(new, 3)
-        self.hold["adds"].append({"ts": time.time(), "mat": key, "scu": round(scu, 3), "where": where})
-        self.hold["adds"] = self.hold["adds"][-200:]
+        """Add (or with a negative number, take away) SCU of a salvage material."""
+        self.hold["mats"][key] = round(max(0.0, self.amount(key) + scu), 3)
+        self._log(MAT_SHORT[key], scu, where)
         self.save()
 
     def set(self, key, scu, where=""):
         self.add(key, max(0.0, scu) - self.amount(key), where)
 
-    def set_ship(self, ship, cap):
-        self.hold["ship"], self.hold["cap"] = ship, cap
+    def add_cargo(self, name, scu, where=""):
+        c = self.hold["cargo"]
+        c[name] = round(max(0.0, float(c.get(name) or 0) + scu), 3)
+        if not c[name]:
+            del c[name]
+        self._log(name, scu, where)
         self.save()
 
-    def clear(self):
-        ship, cap = self.hold.get("ship"), self.hold.get("cap")
-        self.hold = {"mats": {}, "adds": [], "ship": ship, "cap": cap}
+    def add_part(self, name, qty=1, value=0, where=""):
+        for p in self.hold["parts"]:
+            if p["name"] == name and (p.get("value") or 0) == (value or 0):
+                p["qty"] += qty
+                break
+        else:
+            self.hold["parts"].append({"name": name, "qty": qty, "value": value or 0})
+        self.hold["parts"] = [p for p in self.hold["parts"] if p["qty"] > 0]
+        self._log(name, qty, where)
+        self.save()
+
+    def remove_part(self, i):
+        if 0 <= i < len(self.hold["parts"]):
+            del self.hold["parts"][i]
+            self.save()
+
+    def set_ship(self, ship, buffer, grid):
+        self.hold["ship"], self.hold["buffer"], self.hold["grid"] = ship, buffer, grid
         self.save()
 
     def started(self):
         return self.hold.get("started")
 
-    # -- runs
-    def finish(self, earned, sold_at="", mats=None, note=""):
-        """Save a run (the hold, or the given load) with what it sold for, then empty the hold."""
-        use_hold = mats is None
-        mats = {k: v for k, v in (self.hold["mats"] if use_hold else mats).items() if v}
-        run = {"start": self.hold.get("started") if use_hold else None, "end": time.time(),
-               "ship": self.hold.get("ship") or "", "mats": mats, "earned": earned, "sold_at": sold_at,
-               "note": note}
-        if not run["start"]:
-            run["start"] = run["end"]
+    def earned(self):
+        """aUEC from the sales made so far on this trip."""
+        return sum(s.get("earned") or 0 for s in self.hold["sales"])
+
+    def active_hours(self, until=None):
+        """Time spent on this trip, not counting breaks longer than 30 minutes."""
+        ts = sorted([a["ts"] for a in self.hold["adds"]] + [s["ts"] for s in self.hold["sales"]])
+        if until:
+            ts.append(until)
+        sec = sum(min(b - a, ACTIVE_GAP) for a, b in zip(ts, ts[1:]))
+        return sec / 3600
+
+    # -- selling
+    def sell(self, sold, earned, at="", where=""):
+        """Take what you sold out of the hold and remember the sale.
+        sold = {"mats": {key: scu}, "cargo": {name: scu}, "parts": {index: qty}}.
+        Returns the finished run when the hold is now empty, else None."""
+        h = self.hold
+        for k, v in (sold.get("mats") or {}).items():
+            h["mats"][k] = round(max(0.0, self.amount(k) - v), 3)
+        for n, v in (sold.get("cargo") or {}).items():
+            h["cargo"][n] = round(max(0.0, float(h["cargo"].get(n) or 0) - v), 3)
+            if not h["cargo"][n]:
+                del h["cargo"][n]
+        parts = []
+        for i, p in enumerate(h["parts"]):
+            q = (sold.get("parts") or {}).get(i, 0)
+            if q:
+                parts.append({"name": p["name"], "qty": min(q, p["qty"])})
+                p["qty"] -= q
+        h["parts"] = [p for p in h["parts"] if p["qty"] > 0]
+        if not h.get("started"):
+            h["started"] = time.time()
+        h["sales"].append({"ts": time.time(), "earned": earned, "at": at, "where": where,
+                           "mats": {k: v for k, v in (sold.get("mats") or {}).items() if v},
+                           "cargo": {n: v for n, v in (sold.get("cargo") or {}).items() if v}, "parts": parts})
+        if self.empty():
+            return self.finish()
+        self.save()
+        return None
+
+    def finish(self):
+        """Close the trip: save it as a run (if anything was sold) and empty the hold."""
+        h = self.hold
+        run = None
+        if h["sales"]:
+            mats, cargo, parts, names = {}, {}, 0, []
+            for s in h["sales"]:
+                for k, v in s.get("mats", {}).items():
+                    mats[k] = mats.get(k, 0) + v
+                for n, v in s.get("cargo", {}).items():
+                    cargo[n] = cargo.get(n, 0) + v
+                parts += sum(p.get("qty", 0) for p in s.get("parts", []))
+                names += [p["name"] for p in s.get("parts", []) if p["name"] not in names]
+            end = h["sales"][-1]["ts"]
+            run = {"start": h.get("started") or end, "end": end, "ship": h.get("ship") or "",
+                   "mats": mats, "cargo": cargo, "parts": parts, "part_names": names, "earned": self.earned(),
+                   "hours": self.active_hours(), "stops": [s.get("at") or "?" for s in h["sales"]],
+                   "sold_at": ", ".join(dict.fromkeys(s.get("at") or "?" for s in h["sales"]))}
+            self.runs.append(run)
+        self.hold = {"mats": {}, "cargo": {}, "parts": [], "adds": [], "sales": [],
+                     "ship": h.get("ship"), "buffer": h.get("buffer"), "grid": h.get("grid")}
+        self.save()
+        return run
+
+    def add_run(self, load, earned, at=""):
+        """A sale that did not come out of the hold: saved straight to the runs list."""
+        mats = {k: load[n] for k, n, _s in MATERIALS if load.get(n)}
+        cargo = {n: v for n, v in load.items() if v and n not in MAT_NAME.values()}
+        now = time.time()
+        run = {"start": now, "end": now, "ship": self.hold.get("ship") or "", "mats": mats, "cargo": cargo,
+               "parts": 0, "earned": earned, "hours": 0, "stops": [at or "?"], "sold_at": at}
         self.runs.append(run)
-        if use_hold:
-            self.clear()
-        else:
-            self.save()
+        self.save()
         return run
 
     def delete_run(self, i):
@@ -193,13 +306,19 @@ class Store:
 
 
 def run_hours(run):
+    if run.get("hours") is not None:
+        return run["hours"]
     return max(0.0, (run.get("end", 0) - (run.get("start") or run.get("end", 0))) / 3600)
+
+
+def run_scu(run):
+    return sum(run.get("mats", {}).values()) + sum(run.get("cargo", {}).values())
 
 
 def totals(runs, since=0):
     """Runs, SCU, aUEC and aUEC per hour (over runs that have a time) since a timestamp."""
     rs = [r for r in runs if r.get("end", 0) >= since]
-    scu = sum(sum(r.get("mats", {}).values()) for r in rs)
+    scu = sum(run_scu(r) for r in rs)
     earned = sum(r.get("earned") or 0 for r in rs)
     timed = [r for r in rs if run_hours(r) >= 0.05]
     hours = sum(run_hours(r) for r in timed)
@@ -215,15 +334,16 @@ def _num(v):
         return 0.0
 
 
-def buyers(trade, system=None):
-    """{terminal id: (terminal, {mat key: (price per SCU, how much it takes or 0, age days)})}"""
-    names = {n: k for k, n, _s in MATERIALS}
+def buyers(trade, system=None, names=None):
+    """{terminal id: (terminal, {commodity name: (price per SCU, how much it takes or 0, age days)})}
+    for the salvage materials, or for the commodity names given."""
+    want = set(names) if names else {n for _k, n, _s in MATERIALS}
     now, out = time.time(), {}
     if not (trade and trade.loaded):
         return out
     for p in trade.prices:
-        key = names.get(p.get("commodity_name"))
-        if not key:
+        name = p.get("commodity_name")
+        if name not in want:
             continue
         price = _num(p.get("price_sell"))
         term = trade.terminals.get(p.get("id_terminal"))
@@ -231,45 +351,103 @@ def buyers(trade, system=None):
             continue
         demand = _num(p.get("scu_sell") or p.get("scu_sell_stock"))
         age = (now - _num(p.get("date_modified"))) / 86400 if p.get("date_modified") else None
-        out.setdefault(term.id, (term, {}))[1][key] = (price, demand, age)
+        out.setdefault(term.id, (term, {}))[1][name] = (price, demand, age)
     return out
 
 
-def best_price(trade, key, system=None):
-    """(terminal, price) that pays the most for one material."""
+def commodities(trade):
+    """Every commodity name a terminal buys, for the cargo picker."""
+    if not (trade and trade.loaded):
+        return []
+    return sorted({p.get("commodity_name") for p in trade.prices
+                   if p.get("commodity_name") and _num(p.get("price_sell")) > 0})
+
+
+def best_price(trade, name, system=None):
+    """(terminal, price) that pays the most for one commodity (by name, or a material key)."""
+    name = MAT_NAME.get(name, name)
     best = None
-    for term, mats in buyers(trade, system).values():
-        if key in mats and (best is None or mats[key][0] > best[1]):
-            best = (term, mats[key][0])
+    for term, mats in buyers(trade, system, [name]).values():
+        if name in mats and (best is None or mats[name][0] > best[1]):
+            best = (term, mats[name][0])
     return best
 
 
-def sell_plan(trade, load, system=None):
-    """Where to sell a whole load.
-    Returns (rows, split): rows = [(terminal, value, {mat: (price, demand, age)}, missing mats)], best first;
-    split = {mat: (terminal, price)} for selling each material where it pays most."""
-    load = {k: v for k, v in load.items() if v > 0}
+def _take(scu, demand):
+    return scu if not demand or demand <= 0 else min(scu, demand)
+
+
+def terminal_offers(trade, load, system=None):
+    """What each terminal would pay for the load, up to what it takes.
+    Returns [(terminal, value, {name: (price, demand, age, scu it takes)}, names it does not buy)], best first."""
+    load = {n: v for n, v in load.items() if v > 0}
     rows = []
-    for term, mats in buyers(trade, system).values():
-        if load and not any(k in mats for k in load):
+    for term, prices in buyers(trade, system, load or None).values():
+        if load and not any(n in prices for n in load):
             continue
-        value = sum(load[k] * mats[k][0] for k in load if k in mats)
-        missing = [k for k in load if k not in mats]
-        rows.append((term, value, mats, missing))
+        got, value = {}, 0.0
+        for n, (price, demand, age) in prices.items():
+            take = _take(load.get(n, 0), demand) if load else 0
+            got[n] = (price, demand, age, take)
+            value += take * price
+        missing = [n for n in load if n not in prices]
+        rows.append((term, value, got, missing))
     rows.sort(key=lambda r: (-r[1], len(r[3])))
-    split = {}
-    for k in load:
-        b = best_price(trade, k, system)
-        if b:
-            split[k] = b
-    return rows, split
+    return rows
+
+
+def sell_plan(trade, load, system=None, fewest_stops=False):
+    """Plan the stops to sell a whole load when no single terminal takes all of it.
+
+    Most aUEC: each commodity goes to the best price first, then the next best, up to
+    what each terminal takes. Fewest stops: keep picking the terminal that takes the most
+    value of what is left.
+    Returns (stops, unsold): stops = [(terminal, [(name, scu, price)], value)], unsold = {name: scu}."""
+    left = {n: v for n, v in load.items() if v > 0}
+    offers = buyers(trade, system, left)
+    stops = {}
+    if fewest_stops:
+        used = set()
+        while left:
+            best = None
+            for tid, (term, prices) in offers.items():
+                if tid in used:
+                    continue
+                lines = [(n, _take(left[n], prices[n][1]), prices[n][0]) for n in left if n in prices]
+                val = sum(s * p for _n, s, p in lines)
+                if lines and (best is None or val > best[2]):
+                    best = (tid, lines, val)
+            if not best:
+                break
+            used.add(best[0])
+            stops[best[0]] = [list(x) for x in best[1]]
+            for n, s, _p in best[1]:
+                left[n] -= s
+                if left[n] <= 1e-6:
+                    del left[n]
+    else:
+        for n in list(left):
+            cands = sorted(((prices[n][0], prices[n][1], tid) for tid, (_t, prices) in offers.items() if n in prices),
+                           reverse=True)
+            for price, demand, tid in cands:
+                if left.get(n, 0) <= 1e-6:
+                    break
+                s = _take(left[n], demand)
+                stops.setdefault(tid, []).append([n, s, price])
+                left[n] -= s
+            if left.get(n, 0) <= 1e-6:
+                left.pop(n, None)
+    out = [(offers[tid][0], [tuple(x) for x in lines], sum(s * p for _n, s, p in lines))
+           for tid, lines in stops.items()]
+    out.sort(key=lambda x: -x[2])
+    return out, left
 
 
 def value_of(trade, load, system=None):
-    """What the load is worth selling each material at its best price (0 for unknown)."""
+    """What a load ({name or material key: SCU}) is worth at the best price for each (0 when unknown)."""
     v = 0.0
-    for k, scu in load.items():
-        b = best_price(trade, k, system) if scu else None
+    for n, scu in load.items():
+        b = best_price(trade, n, system) if scu else None
         if b:
             v += scu * b[1]
     return v
@@ -402,9 +580,24 @@ def fetch_gear(cache):
                     else:
                         walk(sub, cur)
             walk(d.get("ports"), None)
+            buffer = 0.0
+
+            def storages(ports):
+                for p in ports or []:
+                    it = p.get("equipped_item") or {}
+                    if it.get("type") == "SalvageInternalStorage":
+                        yield it
+                    yield from storages(p.get("ports") or it.get("ports"))
+            for it in storages(d.get("ports")):
+                if it.get("link"):
+                    try:
+                        cap = ((detail(it["link"]).get("resource_container") or {}).get("capacity") or {})
+                        buffer = _num(cap.get("scu") or cap.get("value"))
+                    except Exception:
+                        pass
             if hs:
                 crew = d.get("crew")
-                ships.append({"name": name, "role": role, "cargo": _num(d.get("cargo_capacity")),
+                ships.append({"name": name, "role": role, "cargo": _num(d.get("cargo_capacity")), "buffer": buffer,
                               "crew": crew.get("min") if isinstance(crew, dict) else crew, "heads": hs})
     if not (ships and mods):
         raise RuntimeError("the Wiki sent no salvage gear")
