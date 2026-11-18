@@ -42,11 +42,12 @@ import signatures  # noqa: E402
 import ticker  # noqa: E402
 import events  # noqa: E402
 import belts  # noqa: E402
+import salvage  # noqa: E402
 import edition  # noqa: E402
 
 EDITION = edition.load(core.HERE)  # plain Starboard, or e.g. the BSquaredTV edition
 APP_TITLE = EDITION["name"]
-APP_VERSION = "12.7.2"
+APP_VERSION = "12.8"
 POLL_MS = 400
 HEADER_H = 92
 DISCLAIMER = ("Starboard is an unofficial Star Citizen fan tool, made by the community for the community. It is not affiliated with, endorsed by or sponsored by the Cloud Imperium group of companies. Star Citizen\u00ae, Squadron 42\u00ae, Roberts Space Industries\u00ae and Cloud Imperium\u00ae are registered trademarks of Cloud Imperium Rights LLC. All game content, names and images belong to Cloud Imperium Games and Roberts Space Industries. Other data belongs to its sources, credited below.")
@@ -3176,6 +3177,7 @@ class App:
             self._shop_list()
         if hasattr(self, "tree_salv"):
             self._fill_salvage()
+            self._fill_salv_hold()
 
     def _haul_status(self, extra=""):
         td = self.trade
@@ -4113,8 +4115,9 @@ class App:
             ("MINE", "Identify rocks, find ores, get into belts, refine",
              [("SCAN", lambda: go("scan")), ("FINDER", lambda: go("finder")), ("BELTS", lambda: go("belts")),
               ("REFINING", lambda: go("refining"))]),
-            ("SALVAGE", "Where the wrecks are, and where to sell salvage for the most",
-             [("SPOTS", lambda: go("salvage", 0)), ("SELL", lambda: go("salvage", 1))]),
+            ("SALVAGE", "Track your hold, find wrecks and contracts, sell for the most",
+             [("HOLD", lambda: go("salvage", 0)), ("SPOTS", lambda: go("salvage", 1)),
+             ("SELL", lambda: go("salvage", 3)), ("RUNS", lambda: go("salvage", 4))]),
             ("HAUL", "Trade routes, contracts, runs", [("ROUTES", lambda: go("haul", 0)),
                                                        ("CONTRACTS", lambda: go("haul", 1)),
                                                        ("RUN", lambda: go("haul", 2))]),
@@ -4249,8 +4252,7 @@ class App:
                 self._fill_zones()
         if where == "salvage" and sub is not None:
             self.nb_salv.select(sub)
-            if sub == 0:  # SPOTS
-                self._fill_salv_spots()
+            self._salv_tab_changed()
 
     def _home_caves(self):
         self.near_body.set("Where I am")
@@ -4436,8 +4438,15 @@ class App:
                     v = hauling._num(p.get("price_sell"))
                     if t and t.system == self.last_system and v > 0 and (best is None or v > best[1]):
                         best = (t, v)
-        st["SALVAGE"].configure(text=f"RMC sells best at {best[0].name}: {best[1]:,.0f}/SCU." if best else
-                                "Sell prices load with the trade data from UEX.")
+        sv = getattr(self, "salv", None)
+        if sv and sv.total():
+            cap = sv.hold.get("cap")
+            htext = (f"Hold: {self._scu_text(sv.total())}" + (f" / {self._scu_text(cap)}" if cap else "")
+                     + " SCU. ")
+        else:
+            htext = ""
+        st["SALVAGE"].configure(text=htext + (f"RMC sells best at {best[0].name}: {best[1]:,.0f}/SCU." if best else
+                                              "Sell prices load with the trade data from UEX."))
         # hangar
         a = self.hangar.active_ship()
         if a:
@@ -5031,51 +5040,266 @@ class App:
         return out
 
     # ------------------------------------------------------------ salvage
-    SALVAGE_CARGO = ("Recycled Material Composite", "Construction Materials", "Scrap")
     SALVAGE_TYPES = {"Scrapyard", "Salvage Yard", "Shipwreck", "Derelict Settlement", "Derelict settlement",
                      "Crash site", "Crash Site"}
+    SALV_TABS = ["HOLD", "SPOTS", "CONTRACTS", "SELL", "RUNS", "SETUP"]
 
     def _build_salvage(self, parent):
+        if not hasattr(self, "trade"):
+            self.trade = None  # HAUL loads the prices later
+        self.salv = salvage.Store(self.world.user_dir)
+        self.salv_gear = salvage.load_gear(self.world.data_dir, self.world.user_dir)
         nb2 = ttk.Notebook(parent)
         nb2.pack(fill="both", expand=True)
         self.nb_salv = nb2
-        fs = ttk.Frame(nb2, style="Panel.TFrame", padding=6)
-        nb2.add(fs, text="SELL")
-        row = tk.Frame(fs, bg=PANEL)
-        row.pack(fill="x", pady=(0, 6))
-        self._lbl(row, "CARGO", 7, MUTED, bold=True).pack(side="left", padx=(0, 6))
-        self.salv_cargo = tk.StringVar(value=self.SALVAGE_CARGO[0])
-        cb = ttk.Combobox(row, textvariable=self.salv_cargo, state="readonly", width=28, values=self.SALVAGE_CARGO)
-        cb.pack(side="left")
-        cb.bind("<<ComboboxSelected>>", lambda e: self._fill_salvage())
-        self._lbl(row, "SCU", 7, MUTED, bold=True).pack(side="left", padx=(10, 6))
-        self.salv_scu = tk.StringVar(value=str(self._settings().get("salv_scu", "")))
-        e = ttk.Entry(row, textvariable=self.salv_scu, width=7)
-        e.pack(side="left")
-        e.bind("<KeyRelease>", lambda ev: self._fill_salvage())
-        self.salv_sys = tk.StringVar(value="Current")
-        cb = ttk.Combobox(row, textvariable=self.salv_sys, state="readonly", width=9,
-                          values=["Current", "All"] + self.world.systems())
-        cb.pack(side="right")
-        cb.bind("<<ComboboxSelected>>", lambda e: self._fill_salvage())
-        self._lbl(row, "SYSTEM", 7, MUTED, bold=True).pack(side="right", padx=(10, 6))
-        self.tree_salv = self._tree(fs, [("term", "SELL AT", 170), ("place", "PLACE", 160), ("price", "PER SCU", 75),
-                                         ("value", "YOU GET", 90), ("dist", "DISTANCE", 85), ("age", "PRICE AGE", 60)])
-        self.tree_salv.tag_configure("best", foreground=GREEN)
-        self.tree_salv.tag_configure("old", foreground=MUTED)
-        self.tree_salv.bind("<Double-1>", lambda ev: self._salv_target())
-        brow = tk.Frame(fs, bg=PANEL)
-        brow.pack(fill="x", pady=(6, 0))
-        ttk.Button(brow, text="FLY THERE", command=self._salv_target).pack(side="left")
-        ttk.Button(brow, text="LOG SALE", command=self._salv_log).pack(side="left", padx=6)
-        self.lbl_salv = self._lbl(fs, "", 8, MUTED, wraplength=660)
-        self.lbl_salv.pack(anchor="w", pady=(6, 0))
-        self._salv_map = {}
+        pages = {}
+        for name in self.SALV_TABS:
+            f = ttk.Frame(nb2, style="Panel.TFrame", padding=6)
+            nb2.add(f, text=name)
+            pages[name] = f
+        self.tab_salv_spots = pages["SPOTS"]
+        self._build_salv_hold(pages["HOLD"])
+        self._build_salv_spots(pages["SPOTS"])
+        self._build_salv_contracts(pages["CONTRACTS"])
+        self._build_salv_sell(pages["SELL"])
+        self._build_salv_runs(pages["RUNS"])
+        self._build_salv_setup(pages["SETUP"])
+        nb2.bind("<<NotebookTabChanged>>", lambda e: self._salv_tab_changed())
+        self._fill_salv_hold()
+        if not self.salv.hold.get("ship"):  # your hangar loads after this tab: pick its salvage ship
+            self.root.after_idle(self._salv_pick_hangar_ship)
 
-        fp = ttk.Frame(nb2, style="Panel.TFrame", padding=6)
-        nb2.add(fp, text="SPOTS")
-        self.tab_salv_spots = fp
-        nb2.insert(0, fp)  # find wrecks first, sell after
+    def _salv_pick_hangar_ship(self):
+        name = self._salv_default_ship()
+        self.salv_ship.set(name)
+        self.salv_setup_ship.set(name if salvage.ship_for(self.salv_gear, name) else self.salv_setup_ship.get())
+        self._salv_ship_changed()
+
+    def _salv_tab_changed(self):
+        try:
+            name = self.nb_salv.tab(self.nb_salv.select(), "text")
+        except tk.TclError:
+            return
+        {"HOLD": self._fill_salv_hold, "SPOTS": self._fill_salv_spots, "CONTRACTS": self._fill_salv_contracts,
+         "SELL": self._fill_salvage, "RUNS": self._fill_salv_runs, "SETUP": self._fill_salv_setup}[name]()
+
+    def _salv_system(self):
+        return self.last_system or (self.here or {}).get("system")
+
+    def _salv_ship_names(self):
+        return [s["name"] for s in self.salv_gear.get("ships", [])] + ["Other ship"]
+
+    def _salv_default_ship(self):
+        h = getattr(self, "hangar", None)
+        a = h.active_ship() if h else None
+        s = salvage.ship_for(self.salv_gear, a.get("ship") if a else "")
+        return s["name"] if s else (self._salv_ship_names()[0] if self.salv_gear.get("ships") else "Other ship")
+
+    @staticmethod
+    def _scu_text(v):
+        return f"{v:,.2f}".rstrip("0").rstrip(".") if v else "0"
+
+    def _num_entry(self, var):
+        try:
+            return float((var.get() or "").replace(",", "").strip())
+        except ValueError:
+            return None
+
+    # ---- HOLD: what is in your ship right now
+    def _build_salv_hold(self, f):
+        row = tk.Frame(f, bg=PANEL)
+        row.pack(fill="x", pady=(0, 6))
+        self._lbl(row, "SHIP", 7, MUTED, bold=True).pack(side="left", padx=(0, 6))
+        self.salv_ship = tk.StringVar(value=self.salv.hold.get("ship") or self._salv_default_ship())
+        cb = ttk.Combobox(row, textvariable=self.salv_ship, state="readonly", width=16,
+                          values=self._salv_ship_names())
+        cb.pack(side="left")
+        cb.bind("<<ComboboxSelected>>", lambda e: self._salv_ship_changed())
+        self._lbl(row, "HOLDS", 7, MUTED, bold=True).pack(side="left", padx=(10, 6))
+        cap = self.salv.hold.get("cap")
+        self.salv_cap = tk.StringVar(value=self._scu_text(cap) if cap else "")
+        e = ttk.Entry(row, textvariable=self.salv_cap, width=6)
+        e.pack(side="left")
+        e.bind("<FocusOut>", lambda ev: self._salv_cap_changed())
+        e.bind("<Return>", lambda ev: self._salv_cap_changed())
+        self._lbl(row, "SCU", 7, MUTED, bold=True).pack(side="left", padx=(4, 0))
+        self._tip(e, "How much salvage your ship can carry. Filled in from the ship; change it if your boxes differ.")
+
+        box = RoundBox(f, accent=ORANGE, pad=(10, 6))
+        box.pack(fill="x", pady=(0, 6))
+        bi = box.inner
+        self.lbl_hold_total = tk.Label(bi, text="", bg=CARD, fg=FG, font=(self.F_UI, 14, "bold"), anchor="w")
+        self.lbl_hold_total.pack(fill="x")
+        self.cv_hold = tk.Canvas(bi, height=12, bg=CARD, highlightthickness=0)
+        self.cv_hold.pack(fill="x", pady=(4, 4))
+        self.cv_hold.bind("<Configure>", lambda e: self._draw_hold_bar())
+        self.lbl_hold_mats = tk.Label(bi, text="", bg=CARD, fg=FG, font=(self.F_UI, 9), anchor="w", justify="left")
+        self.lbl_hold_mats.pack(fill="x")
+        self.lbl_hold_value = tk.Label(bi, text="", bg=CARD, fg=MUTED, font=(self.F_UI, 8), anchor="w",
+                                       justify="left")
+        self.lbl_hold_value.pack(fill="x", pady=(2, 0))
+
+        row = tk.Frame(f, bg=PANEL)
+        row.pack(fill="x", pady=(0, 6))
+        self._lbl(row, "ADD", 7, MUTED, bold=True).pack(side="left", padx=(0, 6))
+        self.salv_add_scu = tk.StringVar()
+        e = ttk.Entry(row, textvariable=self.salv_add_scu, width=6)
+        e.pack(side="left")
+        e.bind("<Return>", lambda ev: self._salv_hold_add("rmc"))
+        self._lbl(row, "SCU of", 7, MUTED, bold=True).pack(side="left", padx=6)
+        for key, _n, short in salvage.MATERIALS:
+            b = ttk.Button(row, text=short.upper(), command=lambda k=key: self._salv_hold_add(k))
+            b.pack(side="left", padx=(0, 4))
+        self._tip(e, "Type how much you just collected, then click the material. A minus number takes it away. "
+                     "Enter adds RMC.")
+        b = ttk.Button(row, text="SET EXACT", command=self._salv_hold_set)
+        b.pack(side="left", padx=(10, 0))
+        self._tip(b, "Set each material to the exact SCU your ship shows.")
+        brow = tk.Frame(f, bg=PANEL)
+        brow.pack(fill="x", pady=(0, 6))
+        b = ttk.Button(brow, text="SELL THIS LOAD", style="Accent.TButton",
+                       command=lambda: self._salv_to_sell(True))
+        b.pack(side="left")
+        self._tip(b, "Open SELL with this load filled in to see where it pays the most.")
+        b = ttk.Button(brow, text="SOLD IT", command=self._salv_hold_sold)
+        b.pack(side="left", padx=6)
+        self._tip(b, "You sold the load: saves the run to RUNS and your ledger, then empties the hold.")
+        ttk.Button(brow, text="EMPTY HOLD", command=self._salv_hold_clear).pack(side="left")
+        self.tree_hold = self._tree(f, [("time", "TIME", 70), ("mat", "MATERIAL", 180), ("scu", "SCU", 70),
+                                        ("where", "WHERE", 300)])
+        self.tree_hold.empty_text = "Nothing added yet. Type the SCU you just collected and click RMC or CM."
+        self.lbl_hold = self._lbl(f, "", 8, MUTED, wraplength=700)
+        self.lbl_hold.pack(anchor="w", pady=(6, 0))
+        if not self.salv.hold.get("cap"):
+            self._salv_ship_changed()
+
+    def _salv_ship_changed(self):
+        s = salvage.ship_for(self.salv_gear, self.salv_ship.get())
+        cap = s["cargo"] if s else self._num_entry(self.salv_cap)
+        self.salv_cap.set(self._scu_text(cap) if cap else "")
+        self.salv.set_ship(self.salv_ship.get(), cap)
+        self._fill_salv_hold()
+
+    def _salv_cap_changed(self):
+        cap = self._num_entry(self.salv_cap)
+        if cap != self.salv.hold.get("cap"):
+            self.salv.set_ship(self.salv_ship.get(), cap if cap and cap > 0 else None)
+            self._fill_salv_hold()
+
+    def _salv_hold_add(self, key):
+        v = self._num_entry(self.salv_add_scu)
+        if not v:
+            self.lbl_hold.configure(text="Type the SCU you collected first, for example 2.5.", fg=AMBER)
+            return
+        self.salv.add(key, v, self._where_text())
+        self.salv_add_scu.set("")
+        self._fill_salv_hold()
+        self._hk_say(f"Hold: {'+' if v > 0 else ''}{self._scu_text(v)} SCU {salvage.MAT_SHORT[key]}")
+
+    def _salv_hold_set(self):
+        cur = ", ".join(f"{salvage.MAT_SHORT[k]} {self._scu_text(self.salv.amount(k))}"
+                        for k, _n, _s in salvage.MATERIALS)
+        txt = simpledialog.askstring(APP_TITLE, "What does your hold show? Type the SCU of each, like\n"
+                                     "RMC 6.5, CM 2\n\nRight now: " + cur, parent=self.root)
+        if not txt:
+            return
+        changed = False
+        for key, name, short in salvage.MATERIALS:
+            m = re.search(rf"(?:{short}|{name})\s*[:=]?\s*(\d+(?:[.,]\d+)?)", txt, re.I)
+            if m:
+                self.salv.set(key, float(m.group(1).replace(",", ".")), self._where_text())
+                changed = True
+        if not changed:
+            messagebox.showinfo(APP_TITLE, "Type it like this: RMC 6.5, CM 2")
+        self._fill_salv_hold()
+
+    def _salv_hold_load(self):
+        return {k: self.salv.amount(k) for k, _n, _s in salvage.MATERIALS}
+
+    def _salv_hold_sold(self):
+        load = self._salv_hold_load()
+        if not any(load.values()):
+            self.lbl_hold.configure(text="The hold is empty. Add what you collected first.", fg=AMBER)
+            return
+        self._salv_log_sale(load, from_hold=True)
+
+    def _salv_hold_clear(self):
+        if self.salv.total() and not messagebox.askyesno(APP_TITLE, "Empty the hold without saving a run?"):
+            return
+        self.salv.clear()
+        self._fill_salv_hold()
+
+    def _draw_hold_bar(self):
+        c = self.cv_hold
+        c.delete("all")
+        w, h = max(10, c.winfo_width()), 12
+        cap = self.salv.hold.get("cap") or 0
+        total = self.salv.total()
+        c.create_rectangle(0, 0, w, h, fill=LINE, outline="")
+        if not total:
+            return
+        scale = w / max(cap, total) if cap else w / total
+        x = 0
+        colors = {"rmc": ORANGE, "cm": CYAN, "scrap": MUTED}
+        for key, _n, _s in salvage.MATERIALS:
+            v = self.salv.amount(key)
+            if v:
+                c.create_rectangle(x, 0, x + v * scale, h, fill=colors[key], outline="")
+                x += v * scale
+        if cap and total > cap:
+            c.create_rectangle(w * cap / total, 0, w, h, fill=RED, outline="")
+
+    def _fill_salv_hold(self):
+        if not hasattr(self, "tree_hold"):
+            return
+        H = self.salv.hold
+        total, cap = self.salv.total(), H.get("cap") or 0
+        if cap:
+            pct = total / cap * 100
+            col = RED if total > cap else (AMBER if pct >= 90 else FG)
+            self.lbl_hold_total.configure(text=f"{self._scu_text(total)} / {self._scu_text(cap)} SCU   "
+                                               f"{pct:.0f}% full" + ("   OVER CAPACITY" if total > cap else ""),
+                                          fg=col)
+        else:
+            self.lbl_hold_total.configure(text=f"{self._scu_text(total)} SCU in the hold", fg=FG)
+        self.lbl_hold_mats.configure(text="   ".join(
+            f"{short}: {self._scu_text(self.salv.amount(key))} SCU" for key, _n, short in salvage.MATERIALS))
+        system = self._salv_system()
+        load = self._salv_hold_load()
+        bits = []
+        if total and self.trade and self.trade.loaded:
+            val = salvage.value_of(self.trade, load, system)
+            if val:
+                bits.append(f"Worth about {ledger.money(val)} at the best prices in {system or 'all systems'}.")
+        st = self.salv.started()
+        if st and total:
+            mins = (time.time() - st) / 60
+            bits.append(f"Started {core.fmt_duration(time.time() - st, False)} ago.")
+            if bits and mins >= 3 and self.trade and self.trade.loaded:
+                val = salvage.value_of(self.trade, load, system)
+                if val:
+                    bits.append(f"That is about {ledger.short_money(val / (mins / 60))} per hour so far.")
+        if cap and total < cap and total:
+            bits.append(f"{self._scu_text(cap - total)} SCU of room left.")
+        if not (self.trade and self.trade.loaded):
+            bits.append("Prices come from UEX: open HAUL and click UPDATE PRICES to see what the load is worth.")
+        self.lbl_hold_value.configure(text="  ".join(bits) or "Empty. Add salvage as you collect it.")
+        self._draw_hold_bar()
+        t = self.tree_hold
+        t.delete(*t.get_children())
+        for i, a in enumerate(reversed(H.get("adds", [])[-60:])):
+            t.insert("", "end", tags=["odd"] if i % 2 else [], values=(
+                clock_str(core.dt.datetime.fromtimestamp(a["ts"]), "%H:%M"),
+                salvage.MAT_NAME.get(a["mat"], a["mat"]), ("+" if a["scu"] > 0 else "") + self._scu_text(a["scu"]),
+                clip_text(a.get("where") or "", 50)))
+        self.lbl_hold.configure(fg=MUTED, text=(
+            "Your salvage ledger for this ship. Add each load as you collect it (RMC from hull scraping, CM from "
+            "breaking down pieces). When you sell, click SOLD IT and the run is saved under RUNS."))
+        if self.overlay:
+            self.overlay.refresh()
+
+    # ---- SPOTS
+    def _build_salv_spots(self, fp):
         row = tk.Frame(fp, bg=PANEL)
         row.pack(fill="x", pady=(0, 6))
         self.salv_scope = tk.StringVar(value="This system")
@@ -5083,19 +5307,225 @@ class App:
                           values=["This body", "This system", "All systems"])
         cb.pack(side="left")
         cb.bind("<<ComboboxSelected>>", lambda e: self._fill_salv_spots())
-        self.tree_spots = self._tree(fp, [("name", "PLACE", 230), ("type", "TYPE", 150), ("body", "ON", 110),
-                                          ("dist", "DISTANCE", 90)])
+        self.salv_kind = tk.StringVar(value="All kinds")
+        cb = ttk.Combobox(row, textvariable=self.salv_kind, state="readonly", width=16,
+                          values=["All kinds", "Scrapyards", "Wrecks", "Derelicts", "Contract sites"])
+        cb.pack(side="left", padx=6)
+        cb.bind("<<ComboboxSelected>>", lambda e: self._fill_salv_spots())
+        self.tree_spots = self._tree(fp, [("name", "PLACE", 200), ("type", "KIND", 110), ("body", "ON", 100),
+                                          ("dist", "DISTANCE", 80), ("note", "WHAT'S THERE", 260)])
+        self.tree_spots.tag_configure("illegal", foreground=RED)
+        self.tree_spots.tag_configure("sells", foreground=GREEN)
         self.tree_spots.bind("<Double-1>", lambda ev: self._pick_from(self.tree_spots))
-        self.lbl_spots = self._lbl(fp, "", 8, MUTED, wraplength=660)
+        self.lbl_spots = self._lbl(fp, "", 8, MUTED, wraplength=700)
         self.lbl_spots.pack(anchor="w", pady=(6, 0))
-        nb2.bind("<<NotebookTabChanged>>", lambda e: self._fill_salv_spots())
-        self._fill_salvage()
 
-    def _salv_scu_value(self):
-        try:
-            return max(0.0, float(self.salv_scu.get().replace(",", "")))
-        except ValueError:
-            return 0.0
+    def _fill_salv_spots(self):
+        if not hasattr(self, "tree_spots"):
+            return
+        t = self.tree_spots
+        t.delete(*t.get_children())
+        self._spots_map = {}
+        h = self.here
+        scope, kind = self.salv_scope.get(), self.salv_kind.get()
+        body = h.get("body") if h else None
+        missions = getattr(self, "mi_rows", None)
+        sites = salvage.contract_sites(self.salv_gear, missions)
+        sells = {}
+        for term, mats in salvage.buyers(self.trade).values():
+            for nm in {term.place, term.outpost, getattr(term.loc, "name", None)}:
+                if nm:
+                    sells.setdefault(nm, set()).update(mats)
+        out = []
+        for l in self.world.locations:
+            n = l.name.lower()
+            if l.type in ("Scrapyard", "Salvage Yard") or "scrapyard" in n or "scrap &" in n or "breaker" in n:
+                k = "Scrapyard"
+            elif (l.type in self.SALVAGE_TYPES or "wreck" in n or "crash" in n or "derelict" in n
+                  or "salvage" in n):
+                k = "Derelict" if "derelict" in (n + l.type.lower()) else "Wreck"
+            elif l.name in sites:
+                k = "Contract site"
+            else:
+                continue
+            if kind != "All kinds" and not kind.startswith(k[:5]):
+                continue
+            if scope == "This body" and (not body or l.body != body.name):
+                continue
+            if scope == "This system" and h and l.star != h["system"]:
+                continue
+            notes, tags = [], []
+            if l.name in sites:
+                notes.append(sites[l.name])
+                if "illegal" in sites[l.name]:
+                    tags.append("illegal")
+            if l.name in sells:
+                notes.append("Buys " + ", ".join(salvage.MAT_SHORT[m] for m, _n, _s in salvage.MATERIALS
+                                                 if m in sells[l.name]))
+                tags.append("sells")
+            if k == "Scrapyard" and not notes:
+                notes.append("Salvage yard")
+            if k in ("Wreck", "Derelict") and not notes:
+                notes.append("Abandoned outpost" if k == "Derelict" else l.type)
+            d = None
+            if h and l.star == h["system"]:
+                info = self.world.target_info(h, l)
+                d = info.get("surface") if info.get("same_body") else info.get("straight")
+            out.append((l, k, d, "; ".join(notes), tags))
+        out.sort(key=lambda x: (x[2] is None, x[2] or 0, x[0].name))
+        for i, (l, k, d, note, tags) in enumerate(out):
+            iid = t.insert("", "end", tags=(["odd"] if i % 2 else []) + tags[:1], values=(
+                l.name, k, l.body, core.fmt_km(d) if d is not None else "?", clip_text(note, 60)))
+            self._spots_map[iid] = l
+        if scope == "This body" and not body:
+            msg = "Press F9 on a planet or moon to see the salvage spots there."
+        else:
+            msg = (f"{len(out)} places, closest first. Scrapyards buy and sell salvage; contract sites are where "
+                   "salvage contracts send you (red ones are illegal); green ones buy salvage. Double-click to fly "
+                   "there. Most wrecks spawn with contracts, so check CONTRACTS too.")
+        self.lbl_spots.configure(text=msg)
+
+    # ---- CONTRACTS
+    def _build_salv_contracts(self, f):
+        row = tk.Frame(f, bg=PANEL)
+        row.pack(fill="x", pady=(0, 6))
+        self.salv_c_legal = tk.StringVar(value="Legal and illegal")
+        cb = ttk.Combobox(row, textvariable=self.salv_c_legal, state="readonly", width=15,
+                          values=["Legal and illegal", "Legal only", "Illegal only"])
+        cb.pack(side="left")
+        cb.bind("<<ComboboxSelected>>", lambda e: self._fill_salv_contracts())
+        self.salv_c_sys = tk.StringVar(value="All systems")
+        cb = ttk.Combobox(row, textvariable=self.salv_c_sys, state="readonly", width=11,
+                          values=["All systems"] + self.world.systems())
+        cb.pack(side="left", padx=6)
+        cb.bind("<<ComboboxSelected>>", lambda e: self._fill_salv_contracts())
+        ttk.Button(row, text="UPDATE", command=lambda: (self._mi_fetch(force=True), self._salv_contracts_wait())
+                   ).pack(side="right")
+        self.tree_salv_c = self._tree(f, [("title", "CONTRACT", 290), ("giver", "GIVER", 150),
+                                          ("sys", "SYSTEM", 80), ("rank", "RANK", 45), ("pay", "PAYS", 90)])
+        self.tree_salv_c.tag_configure("illegal", foreground=RED)
+        self.tree_salv_c.bind("<<TreeviewSelect>>", lambda e: self._salv_contract_show())
+        self.lbl_salv_c = self._lbl(f, "", 8, MUTED, wraplength=700)
+        self.lbl_salv_c.pack(anchor="w", pady=(6, 0))
+        self.lbl_salv_c_det = self._lbl(f, "", 9, FG, wraplength=700)
+        self.lbl_salv_c_det.pack(anchor="w", pady=(2, 0))
+        self._salv_c_map = {}
+
+    def _salv_contracts_wait(self):
+        if getattr(self, "mi_loading", False):
+            self.root.after(1500, self._salv_contracts_wait)
+        else:
+            self._fill_salv_contracts()
+
+    def _fill_salv_contracts(self):
+        if not hasattr(self, "tree_salv_c"):
+            return
+        t = self.tree_salv_c
+        t.delete(*t.get_children())
+        self._salv_c_map = {}
+        rows = salvage.contracts(getattr(self, "mi_rows", None))
+        if not rows:
+            loading = getattr(self, "mi_loading", False)
+            if not loading and hasattr(self, "_mi_fetch"):
+                self._mi_fetch()
+                self._salv_contracts_wait()
+            self.lbl_salv_c.configure(fg=CYAN, text="Downloading contracts from the Star Citizen Wiki...")
+            return
+        legal, system = self.salv_c_legal.get(), self.salv_c_sys.get()
+        shown = 0
+        for g in rows:
+            if (legal == "Legal only" and g["illegal"]) or (legal == "Illegal only" and not g["illegal"]):
+                continue
+            if system != "All systems" and g["systems"] != "Any" and system not in g["systems"]:
+                continue
+            if g["rmin"] and g["rmax"] and g["rmax"] > g["rmin"]:
+                pay = f"{ledger.short_money(g['rmin'])}-{ledger.short_money(g['rmax'])}"
+            elif g["rmin"] or g["rmax"]:
+                pay = ledger.short_money(g["rmin"] or g["rmax"])
+            else:
+                pay = "Varies"
+            tags = ["odd"] if shown % 2 else []
+            if g["illegal"]:
+                tags.append("illegal")
+            iid = t.insert("", "end", tags=tags, values=(
+                clip_text(g["title"], 48), clip_text(g["giver"], 24), g["systems"],
+                "" if g["rank"] is None else f"{g['rank']:.0f}", pay))
+            self._salv_c_map[iid] = g
+            shown += 1
+        self.lbl_salv_c.configure(fg=MUTED, text=(
+            f"{shown} salvage contracts in the game, from the Star Citizen Wiki (red ones are illegal). Take them "
+            "from the contract board in your mobiGlas. Click one to see what it is."))
+        self.lbl_salv_c_det.configure(text="")
+
+    def _salv_contract_show(self):
+        sel = self.tree_salv_c.selection()
+        g = self._salv_c_map.get(sel[0]) if sel else None
+        if not g:
+            return
+        bits = [g["hint"]] if g["hint"] else []
+        if g["rank"]:
+            bits.append(f"Needs rank {g['rank']:.0f} with {g['giver']}.")
+        if g["count"] > 1:
+            bits.append(f"{g['count']} versions of this contract.")
+        self.lbl_salv_c_det.configure(text=" ".join(bits))
+
+    # ---- SELL: where to sell a whole load
+    def _build_salv_sell(self, fs):
+        row = tk.Frame(fs, bg=PANEL)
+        row.pack(fill="x", pady=(0, 6))
+        self.salv_sell = {}
+        saved = self._settings().get("salv_load") or {}
+        for key, _n, short in salvage.MATERIALS:
+            self._lbl(row, short.upper(), 7, MUTED, bold=True).pack(side="left", padx=(0 if key == "rmc" else 10, 6))
+            v = tk.StringVar(value=str(saved.get(key, "")))
+            e = ttk.Entry(row, textvariable=v, width=6)
+            e.pack(side="left")
+            e.bind("<KeyRelease>", lambda ev: self._fill_salvage())
+            self.salv_sell[key] = v
+        self._lbl(row, "SCU", 7, MUTED, bold=True).pack(side="left", padx=(4, 0))
+        b = ttk.Button(row, text="FROM HOLD", command=lambda: self._salv_to_sell(False))
+        b.pack(side="left", padx=(10, 0))
+        self._tip(b, "Fill in what is in your hold right now.")
+        self.salv_sys = tk.StringVar(value="Current")
+        cb = ttk.Combobox(row, textvariable=self.salv_sys, state="readonly", width=9,
+                          values=["Current", "All"] + self.world.systems())
+        cb.pack(side="right")
+        cb.bind("<<ComboboxSelected>>", lambda e: self._fill_salvage())
+        self._lbl(row, "SYSTEM", 7, MUTED, bold=True).pack(side="right", padx=(10, 6))
+        self.tree_salv = self._tree(fs, [("term", "SELL AT", 160), ("place", "PLACE", 150), ("buys", "PRICE PER SCU", 170),
+                                         ("value", "YOU GET", 90), ("dist", "DISTANCE", 80), ("age", "PRICE AGE", 60)])
+        self.tree_salv.tag_configure("best", foreground=GREEN)
+        self.tree_salv.tag_configure("old", foreground=MUTED)
+        self.tree_salv.tag_configure("part", foreground=AMBER)
+        self.tree_salv.bind("<Double-1>", lambda ev: self._salv_target())
+        brow = tk.Frame(fs, bg=PANEL)
+        brow.pack(fill="x", pady=(6, 0))
+        ttk.Button(brow, text="FLY THERE", command=self._salv_target).pack(side="left")
+        b = ttk.Button(brow, text="LOG SALE", command=self._salv_log)
+        b.pack(side="left", padx=6)
+        self._tip(b, "Saves the sale to RUNS and your ledger. If the load came from your hold, the hold is emptied.")
+        self.lbl_salv = self._lbl(fs, "", 8, MUTED, wraplength=700)
+        self.lbl_salv.pack(anchor="w", pady=(6, 0))
+        self._salv_map = {}
+        self._salv_from_hold = False
+
+    def _salv_load(self):
+        out = {}
+        for key, var in self.salv_sell.items():
+            try:
+                out[key] = max(0.0, float(var.get().replace(",", "") or 0))
+            except ValueError:
+                out[key] = 0.0
+        return out
+
+    def _salv_to_sell(self, switch):
+        load = self._salv_hold_load()
+        for key, var in self.salv_sell.items():
+            var.set(self._scu_text(load.get(key, 0)) if load.get(key) else "")
+        self._salv_from_hold = True
+        if switch:
+            self.nb_salv.select(self.SALV_TABS.index("SELL"))
+        self._fill_salvage()
 
     def _fill_salvage(self):
         if not hasattr(self, "tree_salv"):
@@ -5103,52 +5533,61 @@ class App:
         t = self.tree_salv
         t.delete(*t.get_children())
         self._salv_map = {}
-        self._save_setting("salv_scu", self.salv_scu.get().strip())
+        load = self._salv_load()
+        self._save_setting("salv_load", {k: v.get().strip() for k, v in self.salv_sell.items()})
         td = self.trade
         if not (td and td.loaded):
             self.lbl_salv.configure(fg=AMBER, text="Salvage prices come from UEX. Open HAUL and click UPDATE PRICES.")
             return
-        cargo = self.salv_cargo.get()
         sysname = self.salv_sys.get()
-        system = self.last_system if sysname == "Current" else (None if sysname == "All" else sysname)
-        scu = self._salv_scu_value()
-        here, now = self.here, time.time()
-        rows = []
-        for p in td.prices:
-            if p.get("commodity_name") != cargo:
-                continue
-            price = hauling._num(p.get("price_sell"))
-            term = td.terminals.get(p.get("id_terminal"))
-            if price <= 0 or term is None or not term.available or (system and term.system != system):
-                continue
-            demand = hauling._num(p.get("scu_sell") or p.get("scu_sell_stock"))
-            d = td.distance_from(here, term) if here and here["system"] == term.system else None
-            age = (now - hauling._num(p.get("date_modified"))) / 86400 if p.get("date_modified") else None
-            rows.append((term, price, demand, d, age))
+        system = self._salv_system() if sysname == "Current" else (None if sysname == "All" else sysname)
+        rows, split = salvage.sell_plan(td, load, system)
         if not rows:
-            self.lbl_salv.configure(fg=AMBER, text=f"No terminal buys {cargo} in {system or 'any system'} right now.")
+            self.lbl_salv.configure(fg=AMBER, text=f"No terminal buys salvage in {system or 'any system'} right now.")
             return
-        best = max(r[1] for r in rows)
-        rows.sort(key=lambda r: -r[1])
-        for i, (term, price, demand, d, age) in enumerate(rows):
+        have_load = any(load.values())
+        best = rows[0][1] if have_load else None
+        for i, (term, value, mats, missing) in enumerate(rows):
             tags = ["odd"] if i % 2 else []
-            if price == best:
+            ages = [m[2] for m in mats.values() if m[2] is not None]
+            age = max(ages) if ages else None
+            if have_load and value == best and not missing:
                 tags.append("best")
+            elif missing:
+                tags.append("part")
             elif age is not None and age > hauling.STALE_PRICE_DAYS:
                 tags.append("old")
-            value = ledger.money(scu * price) if scu else ""
+            prices = "  ".join(f"{salvage.MAT_SHORT[k]} {mats[k][0]:,.0f}" for k, _n, _s in salvage.MATERIALS
+                               if k in mats and (not have_load or load.get(k)))
+            d = td.distance_from(self.here, term) if self.here and self.here["system"] == term.system else None
             place = term.place + (f" ({term.body.name})" if term.body and term.body.name not in term.place
                                   and term.body.type != "Star" else "")
             iid = t.insert("", "end", tags=tags, values=(
-                clip_text(term.name, 26), clip_text(place, 26), f"{price:,.0f}", value,
+                clip_text(term.name, 24), clip_text(place, 24), prices,
+                ledger.money(value) if have_load and value else "",
                 self._short_km(d) if d is not None else "?",
                 "?" if age is None else (f"{age * 24:.0f}h" if age < 1 else f"{age:.0f}d")))
-            self._salv_map[iid] = (term, price)
-        self.lbl_salv.configure(fg=MUTED, text=(
-            f"{len(rows)} terminals buy {cargo} in {system or 'all systems'}, best price first ({cw('green')}). "
-            + ("Type your SCU to see what you get. " if not scu else "")
-            + "Double-click to fly there. LOG SALE adds the sale to your ledger. Click a column to sort by "
-              "distance."))
+            self._salv_map[iid] = (term, mats)
+        where = system or "all systems"
+        if not have_load:
+            self.lbl_salv.configure(fg=MUTED, text=(
+                f"{len(rows)} terminals buy salvage in {where}. Type your SCU of RMC, CM and scrap (or click FROM "
+                "HOLD) to see what the whole load gets you at each one. Prices are per SCU."))
+            return
+        top = rows[0]
+        msg = [f"Best single stop: {top[0].name} for {ledger.money(top[1])}"
+               + (f" (does not buy {', '.join(salvage.MAT_SHORT[k] for k in top[3])})" if top[3] else "") + "."]
+        split_val = sum(load[k] * p for k, (_tm, p) in split.items())
+        if len({tm.id for tm, _p in split.values()}) > 1 and split_val > top[1] * 1.02:
+            parts = ", ".join(f"{salvage.MAT_SHORT[k]} at {tm.name}" for k, (tm, _p) in split.items())
+            msg.append(f"Selling each where it pays most ({parts}) gets {ledger.money(split_val)}, "
+                       f"{ledger.money(split_val - top[1])} more for the extra stop.")
+        for k, scu in load.items():
+            if scu and k in top[2] and top[2][k][1] and top[2][k][1] < scu:
+                msg.append(f"{top[0].name} only takes about {top[2][k][1]:,.0f} SCU of {salvage.MAT_SHORT[k]} "
+                           "right now.")
+        msg.append("Amber rows don't buy every material in your load. Double-click to fly there.")
+        self.lbl_salv.configure(fg=MUTED, text=" ".join(msg))
 
     def _salv_target(self):
         sel = self.tree_salv.selection()
@@ -5160,57 +5599,216 @@ class App:
             messagebox.showinfo(APP_TITLE, f"{hit[0].name} is not on the map yet.")
 
     def _salv_log(self):
-        sel = self.tree_salv.selection()
+        load = self._salv_load()
+        if not any(load.values()):
+            messagebox.showinfo(APP_TITLE, "Type the SCU you sold first (or click FROM HOLD).")
+            return
+        hold = self._salv_hold_load()
+        from_hold = self._salv_from_hold and all(abs(load.get(k, 0) - hold.get(k, 0)) < 0.01 for k in hold)
+        self._salv_log_sale(load, from_hold=from_hold)
+
+    def _salv_log_sale(self, load, from_hold):
+        sel = self.tree_salv.selection() if hasattr(self, "tree_salv") else ()
         hit = self._salv_map.get(sel[0]) if sel else None
-        scu = self._salv_scu_value()
-        guess = f"{scu * hit[1]:.0f}" if hit and scu else ""
+        guess = ""
+        if hit:
+            guess = f"{sum(load[k] * hit[1][k][0] for k in load if k in hit[1]):.0f}"
+        elif self.trade and self.trade.loaded:
+            v = salvage.value_of(self.trade, load, self._salv_system())
+            guess = f"{v:.0f}" if v else ""
         txt = simpledialog.askstring(APP_TITLE, "How much did you get for the salvage? (aUEC)", initialvalue=guess,
                                      parent=self.root)
         amt = ledger.parse_amount(txt) if txt else None
         if not amt:
             return
         where = hit[0].name if hit else ""
-        self.ledger.add(ledger.INCOME, "Salvage sale", amt,
-                        note=f"{scu:g} SCU {self.salv_cargo.get()}" + (f" at {where}" if where else ""),
+        what = ", ".join(f"{self._scu_text(v)} SCU {salvage.MAT_SHORT[k]}" for k, v in load.items() if v)
+        self.ledger.add(ledger.INCOME, "Salvage sale", amt, note=what + (f" at {where}" if where else ""),
                         where=self._where_text())
+        run = self.salv.finish(amt, where, None if from_hold else load)
+        if from_hold:
+            for v in self.salv_sell.values():
+                v.set("")
+            self._salv_from_hold = False
         self._fill_ledger()
-        self._hk_say(f"Ledger +{ledger.short_money(amt)}: Salvage sale", ok=True)
+        self._fill_salv_hold()
+        self._fill_salv_runs()
+        self._fill_salvage()
+        hrs = salvage.run_hours(run)
+        rate = f", {ledger.short_money(amt / hrs)}/h" if hrs >= 0.05 else ""
+        self._hk_say(f"Salvage run saved: +{ledger.short_money(amt)}{rate}", ok=True)
 
-    def _fill_salv_spots(self):
-        if not hasattr(self, "tree_spots"):
+    # ---- RUNS
+    def _build_salv_runs(self, f):
+        box = RoundBox(f, accent=GREEN, pad=(10, 6))
+        box.pack(fill="x", pady=(0, 6))
+        self.lbl_runs_tot = tk.Label(box.inner, text="", bg=CARD, fg=FG, font=(self.F_UI, 9), anchor="w",
+                                     justify="left")
+        self.lbl_runs_tot.pack(fill="x")
+        self.tree_runs = self._tree(f, [("date", "DATE", 110), ("ship", "SHIP", 90), ("load", "LOAD", 170),
+                                        ("earned", "EARNED", 90), ("time", "TIME", 60), ("rate", "PER HOUR", 80),
+                                        ("at", "SOLD AT", 140)])
+        self.tree_runs.empty_text = "No salvage runs yet. Click SOLD IT in HOLD, or LOG SALE in SELL."
+        brow = tk.Frame(f, bg=PANEL)
+        brow.pack(fill="x", pady=(6, 0))
+        ttk.Button(brow, text="DELETE RUN", command=self._salv_run_delete).pack(side="left")
+        self.lbl_runs = self._lbl(f, "Every salvage load you sell. TIME runs from your first ADD in HOLD until "
+                                     "you sold it.", 8, MUTED, wraplength=700)
+        self.lbl_runs.pack(anchor="w", pady=(6, 0))
+        self._runs_map = {}
+
+    def _fill_salv_runs(self):
+        if not hasattr(self, "tree_runs"):
             return
-        t = self.tree_spots
+        t = self.tree_runs
         t.delete(*t.get_children())
-        self._spots_map = {}
-        h = self.here
-        scope = self.salv_scope.get()
-        body = h.get("body") if h else None
-        out = []
-        for l in self.world.locations:
-            n = l.name.lower()
-            if not (l.type in self.SALVAGE_TYPES or "wreck" in n or "crash" in n or "derelict" in n
-                    or "salvage" in n or "scrapyard" in n):
+        self._runs_map = {}
+        runs = self.salv.runs
+        for n, (i, r) in enumerate(sorted(enumerate(runs), key=lambda x: -x[1].get("end", 0))):
+            hrs = salvage.run_hours(r)
+            iid = t.insert("", "end", tags=["odd"] if n % 2 else [], values=(
+                clock_str(core.dt.datetime.fromtimestamp(r.get("end", 0)), "%b %d %H:%M"),
+                clip_text(r.get("ship") or "", 14),
+                ", ".join(f"{self._scu_text(v)} {salvage.MAT_SHORT.get(k, k)}" for k, v in r.get("mats", {}).items()),
+                ledger.money(r.get("earned") or 0), core.fmt_duration(hrs * 3600, False) if hrs >= 0.05 else "",
+                ledger.short_money((r.get("earned") or 0) / hrs) if hrs >= 0.05 else "",
+                clip_text(r.get("sold_at") or "", 24)))
+            self._runs_map[iid] = i
+        now = time.time()
+        today = core.dt.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+        lines = []
+        for label, since in (("Today", today), ("Last 7 days", now - 7 * 86400), ("All time", 0)):
+            st = salvage.totals(runs, since)
+            if not st["runs"]:
+                lines.append(f"{label}: no runs")
                 continue
-            if scope == "This body" and (not body or l.body != body.name):
-                continue
-            if scope == "This system" and h and l.star != h["system"]:
-                continue
-            d = None
-            if h and l.star == h["system"]:
-                info = self.world.target_info(h, l)
-                d = info.get("surface") if info.get("same_body") else info.get("straight")
-            out.append((l, d))
-        out.sort(key=lambda x: (x[1] is None, x[1] or 0, x[0].name))
-        for i, (l, d) in enumerate(out):
-            iid = t.insert("", "end", tags=["odd"] if i % 2 else [], values=(
-                l.name, l.type, l.body, core.fmt_km(d) if d is not None else "?"))
-            self._spots_map[iid] = l
-        if scope == "This body" and not body:
-            msg = "Press F9 on a planet or moon to see the salvage spots there."
+            rate = f", {ledger.short_money(st['per_hour'])}/h" if st["per_hour"] else ""
+            lines.append(f"{label}: {st['runs']} run{'s' if st['runs'] != 1 else ''}, "
+                         f"{self._scu_text(st['scu'])} SCU, {ledger.money(st['earned'])}{rate}")
+        self.lbl_runs_tot.configure(text="\n".join(lines))
+
+    def _salv_run_delete(self):
+        sel = self.tree_runs.selection()
+        if not sel or sel[0] not in self._runs_map:
+            return
+        if messagebox.askyesno(APP_TITLE, "Delete this run? (Your ledger entry stays; delete it in MONEY.)"):
+            self.salv.delete_run(self._runs_map[sel[0]])
+            self._fill_salv_runs()
+
+    # ---- SETUP: salvage ships and their gear
+    def _build_salv_setup(self, f):
+        row = tk.Frame(f, bg=PANEL)
+        row.pack(fill="x", pady=(0, 6))
+        self._lbl(row, "SHIP", 7, MUTED, bold=True).pack(side="left", padx=(0, 6))
+        names = [s["name"] for s in self.salv_gear.get("ships", [])]
+        self.salv_setup_ship = tk.StringVar(value=self._salv_default_ship() if names else "")
+        self.salv_setup_cb = ttk.Combobox(row, textvariable=self.salv_setup_ship, state="readonly", width=16,
+                                          values=names)
+        self.salv_setup_cb.pack(side="left")
+        self.salv_setup_cb.bind("<<ComboboxSelected>>", lambda e: self._fill_salv_setup())
+        self._lbl(row, "GOAL", 7, MUTED, bold=True).pack(side="left", padx=(10, 6))
+        self.salv_goal = tk.StringVar(value=self._settings().get("salv_goal", salvage.GOALS[0]))
+        cb = ttk.Combobox(row, textvariable=self.salv_goal, state="readonly", width=22, values=salvage.GOALS)
+        cb.pack(side="left")
+        cb.bind("<<ComboboxSelected>>", lambda e: (self._save_setting("salv_goal", self.salv_goal.get()),
+                                                   self._fill_salv_setup()))
+        ttk.Button(row, text="UPDATE", command=self._salv_gear_fetch).pack(side="right")
+        box = RoundBox(f, accent=ORANGE, pad=(10, 6))
+        box.pack(fill="x", pady=(0, 6))
+        self.lbl_setup_ship = tk.Label(box.inner, text="", bg=CARD, fg=FG, font=(self.F_UI, 9), anchor="w",
+                                       justify="left")
+        self.lbl_setup_ship.pack(fill="x")
+        self.lbl_setup_ship.bind("<Configure>", lambda e: self.lbl_setup_ship.configure(
+            wraplength=max(200, e.width - 6)))
+        self.tree_salv_mods = self._tree(f, [("name", "MODULE", 140), ("fits", "FITS", 75), ("speed", "SPEED", 50),
+                                             ("radius", "BEAM", 50), ("eff", "KEEPS", 50), ("price", "PRICE", 55),
+                                             ("note", "GOOD FOR", 380)])
+        self.tree_salv_mods.tag_configure("pick", foreground=GREEN)
+        self.tree_salv_mods.bind("<<TreeviewSelect>>", lambda e: self._salv_mod_show())
+        self.lbl_setup = self._lbl(f, "", 8, MUTED, wraplength=700)
+        self.lbl_setup.pack(anchor="w", pady=(6, 0))
+        self._mods_map = {}
+
+    def _fill_salv_setup(self):
+        if not hasattr(self, "tree_salv_mods"):
+            return
+        g = self.salv_gear
+        ship = salvage.ship_for(g, self.salv_setup_ship.get())
+        goal = self.salv_goal.get()
+        picks = set()
+        if ship:
+            sug = salvage.suggest(g, ship, goal)
+            lines = [f"{ship['name']}: {ship['role']}, {self._scu_text(ship['cargo'])} SCU hold, crew "
+                     f"{ship.get('crew') or 1}, {len(ship['heads'])} salvage head{'s' if len(ship['heads']) != 1 else ''}."]
+            for n, s in enumerate(sug, 1):
+                short = lambda ms: " + ".join(m.replace(" Scraper Module", "").replace(" Tractor Module", " tractor")
+                                              for m in ms) or "none"
+                change = "" if s["pick"] == s["stock"] else f"   →  for {goal.lower()}: {short(s['pick'])}"
+                lines.append(f"Head {n} ({s['head'].replace(' Salvage Head', '')}): comes with {short(s['stock'])}"
+                             + change)
+                picks.update(s["pick"])
+            if all(s["pick"] == s["stock"] for s in sug):
+                lines.append(f"The stock modules are already the best fit for {goal.lower()}.")
+            self.lbl_setup_ship.configure(text="\n".join(lines))
         else:
-            msg = (f"{len(out)} scrapyards, salvage yards, wrecks and derelicts, closest first. Double-click one to "
-                   "fly there. SETTINGS > MAP DATA > CHECK FOR UPDATES adds more.")
-        self.lbl_spots.configure(text=msg)
+            self.lbl_setup_ship.configure(text="Pick a salvage ship.")
+        t = self.tree_salv_mods
+        t.delete(*t.get_children())
+        self._mods_map = {}
+        for i, m in enumerate(sorted(g.get("mods", []), key=lambda m: (m["kind"] != "scraper", m["name"]))):
+            tags = ["odd"] if i % 2 else []
+            if m["name"] in picks:
+                tags.append("pick")
+            pr = m.get("price") or {}
+            iid = t.insert("", "end", tags=tags, values=(
+                m["name"].replace(" Module", ""), m.get("fits", "").replace(" Salvage Head", ""),
+                f"{m['speed']:g}", f"{m['radius']:g} m", f"{m['efficiency'] * 100:.0f}%",
+                ledger.short_money(pr["min"]) if pr.get("min") else ("Craft" if m.get("craftable") else "?"),
+                salvage.describe_module(m)))
+            self._mods_map[iid] = m
+        self.lbl_setup.configure(text=(
+            "SPEED is how fast the beam scrapes, BEAM is how wide it is, KEEPS is how much of the hull you get as "
+            "RMC (the rest is lost). Green modules are the pick for your goal. Click one to see where to buy it. "
+            f"Data: {g.get('source', 'Star Citizen Wiki')}" + (f", game {g['version']}" if g.get("version") else "")
+            + "."))
+
+    def _salv_mod_show(self):
+        sel = self.tree_salv_mods.selection()
+        m = self._mods_map.get(sel[0]) if sel else None
+        if not m:
+            return
+        pr = m.get("price") or {}
+        where = ", ".join(pr.get("at") or [])
+        txt = f"{m['name']}: " + (f"from {ledger.money(pr['min'])} at {where}." if pr.get("min") else
+                                  "not sold in shops right now" + (", but you can craft it." if m.get("craftable")
+                                                                    else "."))
+        self.lbl_setup.configure(text=txt)
+
+    def _salv_gear_fetch(self):
+        if getattr(self, "_salv_gear_loading", False):
+            return
+        self._salv_gear_loading = True
+        self.lbl_setup.configure(text="Downloading salvage gear from the Star Citizen Wiki...", fg=CYAN)
+        cache = wikidata.Cache(self.world.user_dir, "salvage")
+
+        def work():
+            try:
+                salvage.fetch_gear(cache)
+                err = None
+            except Exception as e:
+                err = str(e)
+
+            def done():
+                self._salv_gear_loading = False
+                if err:
+                    self.lbl_setup.configure(text=f"Could not download salvage gear ({err}).", fg=AMBER)
+                    return
+                self.salv_gear = salvage.load_gear(self.world.data_dir, self.world.user_dir)
+                self.salv_setup_cb.configure(values=[s["name"] for s in self.salv_gear.get("ships", [])])
+                self.lbl_setup.configure(fg=MUTED)
+                self._fill_salv_setup()
+            self._ui(done)
+        threading.Thread(target=work, daemon=True).start()
 
     # ------------------------------------------------------------ combat
     def _build_combat(self, parent):
@@ -10024,11 +10622,11 @@ class App:
 
     OVERLAY_PARTS = [("nav", "Position and target"), ("run", "Hauling run"), ("scan", "Signature scans"),
                      ("refinery", "Refinery timers"), ("contract", "Current contracts"),
-                     ("earnings", "Session earnings"), ("belt", "Belt route")]
+                     ("earnings", "Session earnings"), ("belt", "Belt route"), ("salvage", "Salvage hold")]
 
     def overlay_parts(self):
         c = self._settings().get("overlay_parts") or {}
-        return {k: c.get(k, k in ("nav", "run", "scan", "belt")) for k, _l in self.OVERLAY_PARTS}
+        return {k: c.get(k, k in ("nav", "run", "scan", "belt", "salvage")) for k, _l in self.OVERLAY_PARTS}
 
     def _overlay_parts_save(self):
         self._save_setting("overlay_parts", {k: v.get() for k, v in self.ov_vars.items()})
@@ -10618,6 +11216,18 @@ class Overlay(tk.Toplevel):
                 if w:
                     rows.append((clip_text(belts.short(w), 48), "", GREEN if w["inside"] else MUTED))
             out["belt"] = rows
+        sv = getattr(app, "salv", None)
+        if parts.get("salvage") and sv and sv.total():
+            cap = sv.hold.get("cap")
+            tot = sv.total()
+            val = salvage.value_of(app.trade, {k: sv.amount(k) for k, _n, _s in salvage.MATERIALS},
+                                   app._salv_system()) if app.trade and app.trade.loaded else 0
+            out["salvage"] = [(f"{app._scu_text(tot)}" + (f" / {app._scu_text(cap)}" if cap else "") + " SCU"
+                               + (f"  ({tot / cap * 100:.0f}%)" if cap else ""),
+                               f"~{ledger.short_money(val)}" if val else "",
+                               RED if cap and tot > cap else (AMBER if cap and tot >= cap * 0.9 else FG)),
+                              ("   ".join(f"{s} {app._scu_text(sv.amount(k))}" for k, _n, s in salvage.MATERIALS
+                                          if sv.amount(k)), "", MUTED)]
         if parts.get("earnings") and (getattr(app, "gl_session", {}) or {}).get("joined"):
             st = app._session_stats(app.gl_session["joined"], None)
             out["earnings"] = [(f"{ledger.money(st['net'])} this session",
@@ -10626,9 +11236,10 @@ class Overlay(tk.Toplevel):
 
     def _draw_list(self, key, rows, y0, y1):
         c, F, M, w = self.c, self.app.F_UI, self.app.F_MONO, self.W
-        title = {"refinery": "REFINERY", "contract": "CONTRACTS", "earnings": "EARNINGS",
+        title = {"refinery": "REFINERY", "contract": "CONTRACTS", "earnings": "EARNINGS", "salvage": "SALVAGE HOLD",
                  "belt": "BELT: " + (getattr(self.app, "belt_plan", None) or {}).get("name", "").upper()}[key]
-        self._box(y0, y1, title, {"refinery": TEAL, "contract": AMBER, "earnings": GREEN, "belt": CYAN}[key])
+        self._box(y0, y1, title, {"refinery": TEAL, "contract": AMBER, "earnings": GREEN, "belt": CYAN,
+                                  "salvage": ORANGE}[key])
         y = y0 + 24
         for left, right, col in rows:
             c.create_text(14, y, anchor="nw", text=left, fill=col, font=(F, 9, "bold"))
@@ -10649,7 +11260,7 @@ class Overlay(tk.Toplevel):
         stack = []
         if run:
             stack.append(("run", 60))
-        for k in ("belt", "refinery", "contract", "earnings"):
+        for k in ("belt", "salvage", "refinery", "contract", "earnings"):
             if k in lists:
                 stack.append((k, 30 + 18 * len(lists[k])))
         if scan:

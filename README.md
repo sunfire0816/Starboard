@@ -172,7 +172,7 @@ The overlay starts **locked**, so mouse clicks go straight through it to the gam
 
 ## Home screen (HOME tab)
 
-Starboard opens on HOME. The **RIGHT NOW** card at the top suggests what to do: refinery jobs ready to collect, the best trade from where you are, contracts you have running, or the best paying missions in your system. Each card is one thing you can do in the game (Navigate, Mine, Haul, Explore, Shop, Money, Hangar, Combat, Salvage), shows where you stand right now, and has buttons straight to the right tab. The tabs along the top follow the same activities: NAVIGATE (Nearby, Map, Space, Starmap), MINE (Scan, Ores, Finder, Log, Refining, Loadout), SALVAGE (Sell, Spots), COMBAT (Bounties, Zones), HAUL, SHOP, MONEY, HANGAR, MISSIONS and SETTINGS (Settings, Data), with LIVE right after HOME.
+Starboard opens on HOME. The **RIGHT NOW** card at the top suggests what to do: refinery jobs ready to collect, the best trade from where you are, contracts you have running, or the best paying missions in your system. Each card is one thing you can do in the game (Navigate, Mine, Haul, Explore, Shop, Money, Hangar, Combat, Salvage), shows where you stand right now, and has buttons straight to the right tab. The tabs along the top follow the same activities: NAVIGATE (Nearby, Map, Space, Starmap), MINE (Scan, Ores, Finder, Log, Refining, Loadout), SALVAGE (Hold, Spots, Contracts, Sell, Runs, Setup), COMBAT (Bounties, Zones), HAUL, SHOP, MONEY, HANGAR, MISSIONS and SETTINGS (Settings, Data), with LIVE right after HOME.
 
 The look follows the RSI website: deep navy panels, sky-blue highlights, orange buttons for the main action on each screen, and a coloured bar on each HOME card so you can find a section at a glance.
 
@@ -188,9 +188,17 @@ The list counts down to each job. When one is ready, you get a message in the ap
 
 ## Salvage (SALVAGE tab)
 
-**SELL** lists every terminal that buys Recycled Material Composite, Construction Materials or Scrap, best price first, with what your load is worth (type your SCU), how far each one is and how old the price is. Double-click to fly there; **LOG SALE** adds the sale to your ledger.
+**HOLD** is your salvage ledger for the ship you are flying. Pick your salvage ship (it fills in how much it holds), then each time you collect some, type the SCU and click **RMC**, **CM** or **SCRAP**. **SET EXACT** sets each one to what your ship shows. The card shows how full you are, what the load is worth at today's best prices and how much you are making per hour. The overlay can show it too (SETTINGS > OVERLAY > SALVAGE HOLD). When you sell, click **SOLD IT**: the run goes to RUNS and your ledger, and the hold empties.
 
-**SPOTS** lists scrapyards, salvage yards, shipwrecks and derelict settlements on your body, in your system or everywhere, closest first. Double-click to fly there.
+**SPOTS** lists scrapyards, wrecks, derelict outposts and the places salvage contracts send you, closest first. It marks the ones that buy salvage and the illegal contract sites. Double-click to fly there.
+
+**CONTRACTS** lists every salvage contract in the game from the Star Citizen Wiki, legal and illegal, with who gives it and what it is.
+
+**SELL** takes your whole load (RMC, CM and scrap, or **FROM HOLD**) and shows what each terminal pays for all of it, the best single stop, whether splitting it over two stops pays more, and when a terminal can't take that much. **LOG SALE** saves the sale.
+
+**RUNS** keeps every salvage run: what you sold, what it paid, how long it took and aUEC per hour, with totals for today, the last 7 days and all time.
+
+**SETUP** shows each salvage ship's heads and stock modules, compares every scraper module (speed, beam size, how much material it keeps, price and where to buy) and suggests modules for your goal: the most material per hull, big hulls quickly, or a balance.
 
 ## Settings (SETTINGS tab)
 
@@ -403,7 +411,7 @@ The tabs run left to right in four groups: getting around, the things you do, yo
 | LIVE | | What the game's own log says: trades, purchases, contracts, location, ship and armistice, added to your ledger by itself. |
 | NAVIGATE | NEARBY, MAP, SPACE, STARMAP | Places near you (filter by type, double-click to target), a flat map with you, your target and the night side, the nearest planets, stations and jump points, and every location in every system. |
 | MINE | SCAN, FINDER, BELTS, ORES, LOG, REFINING, LOADOUT | In the order of a mining trip: identify a scanned rock, where to find a material, how to get into an asteroid belt, what ores a body has, your mining log, refinery jobs, and your mining loadout. |
-| SALVAGE | SPOTS, SELL | Where the wrecks and salvage yards are, then where to sell for the most. |
+| SALVAGE | HOLD, SPOTS, CONTRACTS, SELL, RUNS, SETUP | Track what is in your hold, find wrecks and contracts, sell the whole load for the most, and plan your salvage gear. |
 | HAUL | ROUTES, CONTRACTS, RUN | Trade routes, hauling contracts and the live run tracker. |
 | COMBAT | BOUNTIES, ZONES | Bounty contracts and payouts, and where security, outlaws and hostile facilities are. |
 | MISSIONS | | Every mission with its reward, giver, requirements and the blueprints it gives. |

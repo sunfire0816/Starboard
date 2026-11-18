@@ -1,0 +1,251 @@
+{
+ "source": "api.star-citizen.wiki",
+ "version": "4.10.3-LIVE.13165946",
+ "heads": [
+  {
+   "name": "Baler Salvage Head",
+   "size": 2,
+   "maker": "Greycat Industrial",
+   "range": 150
+  },
+  {
+   "name": "Salvation Salvage Head",
+   "size": 2,
+   "maker": "Greycat Industrial",
+   "range": 150
+  }
+ ],
+ "mods": [
+  {
+   "name": "Abrade Scraper Module",
+   "maker": "Greycat Industrial",
+   "kind": "scraper",
+   "speed": 0.15,
+   "radius": 3.5,
+   "efficiency": 0.9,
+   "craftable": true,
+   "price": {
+    "min": 20188,
+    "at": [
+     "Platinum Bay - Pyro Gateway (Nyx)",
+     "Platinum Bay - Stanton Gateway (Nyx)",
+     "Platinum Bay - Stanton Gateway (Pyro)",
+     "Platinum Bay - Nyx Gateway (Pyro)"
+    ]
+   },
+   "fits": "Baler Salvage Head"
+  },
+  {
+   "name": "Cinch Scraper Module",
+   "maker": "Greycat Industrial",
+   "kind": "scraper",
+   "speed": 0.6,
+   "radius": 1.5,
+   "efficiency": 1,
+   "craftable": true,
+   "price": {
+    "min": 11150,
+    "at": [
+     "Platinum Bay - Pyro Gateway (Nyx)",
+     "Platinum Bay - Stanton Gateway (Nyx)",
+     "Platinum Bay - Stanton Gateway (Pyro)",
+     "Platinum Bay - Nyx Gateway (Pyro)"
+    ]
+   },
+   "fits": "Baler Salvage Head"
+  },
+  {
+   "name": "Comer Scraper Module",
+   "maker": "Greycat Industrial",
+   "kind": "scraper",
+   "speed": 0.7,
+   "radius": 1.5,
+   "efficiency": 0.8,
+   "craftable": true,
+   "price": null,
+   "fits": "Salvation Salvage Head"
+  },
+  {
+   "name": "Hart Scraper Module",
+   "maker": "Greycat Industrial",
+   "kind": "scraper",
+   "speed": 0.8,
+   "radius": 1,
+   "efficiency": 1,
+   "craftable": true,
+   "price": null,
+   "fits": "Salvation Salvage Head"
+  },
+  {
+   "name": "ReadyGrip Tractor Module",
+   "maker": "",
+   "kind": "tractor",
+   "speed": 1,
+   "radius": 1,
+   "efficiency": 1,
+   "craftable": false,
+   "price": {
+    "min": 10593,
+    "at": [
+     "Cargo Services - Levski",
+     "Platinum Bay - Pyro Gateway (Nyx)",
+     "Platinum Bay - Stanton Gateway (Nyx)",
+     "Platinum Bay - Stanton Gateway (Pyro)"
+    ]
+   },
+   "fits": "Baler Salvage Head"
+  },
+  {
+   "name": "Trawler Scraper Module",
+   "maker": "Greycat Industrial",
+   "kind": "scraper",
+   "speed": 0.05,
+   "radius": 6,
+   "efficiency": 0.6,
+   "craftable": true,
+   "price": {
+    "min": 29593,
+    "at": [
+     "Omega Pro - New Babbage",
+     "Platinum Bay - Everus Harbor",
+     "Cousin Crow's - Providence Platform - Orison",
+     "Platinum Bay - Port Tressler"
+    ]
+   },
+   "fits": "Baler Salvage Head"
+  }
+ ],
+ "ships": [
+  {
+   "name": "Vulture",
+   "role": "Light Salvage",
+   "cargo": 12,
+   "crew": 1,
+   "heads": [
+    {
+     "head": "Baler Salvage Head",
+     "modules": [
+      "Cinch Scraper Module",
+      "Abrade Scraper Module"
+     ]
+    },
+    {
+     "head": "Baler Salvage Head",
+     "modules": [
+      "Cinch Scraper Module",
+      "ReadyGrip Tractor Module"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "MISC Fortune",
+   "role": "Light Salvage",
+   "cargo": 16,
+   "crew": 1,
+   "heads": [
+    {
+     "head": "Baler Salvage Head",
+     "modules": [
+      "Cinch Scraper Module",
+      "ReadyGrip Tractor Module"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "MOTH",
+   "role": "Medium Salvage",
+   "cargo": 224,
+   "crew": 4,
+   "heads": [
+    {
+     "head": "Baler Salvage Head",
+     "modules": [
+      "Cinch Scraper Module",
+      "Abrade Scraper Module"
+     ]
+    },
+    {
+     "head": "Baler Salvage Head",
+     "modules": [
+      "Cinch Scraper Module",
+      "Abrade Scraper Module"
+     ]
+    },
+    {
+     "head": "Baler Salvage Head",
+     "modules": [
+      "Cinch Scraper Module",
+      "Abrade Scraper Module"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Reclaimer",
+   "role": "Heavy Salvage",
+   "cargo": 420,
+   "crew": 5,
+   "heads": [
+    {
+     "head": "Baler Salvage Head",
+     "modules": [
+      "ReadyGrip Tractor Module",
+      "Trawler Scraper Module"
+     ]
+    },
+    {
+     "head": "Baler Salvage Head",
+     "modules": [
+      "ReadyGrip Tractor Module",
+      "Trawler Scraper Module"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Salvation",
+   "role": "Starter / Light Salvage",
+   "cargo": 6,
+   "crew": 1,
+   "heads": [
+    {
+     "head": "Salvation Salvage Head",
+     "modules": [
+      "Hart Scraper Module"
+     ]
+    },
+    {
+     "head": "Salvation Salvage Head",
+     "modules": [
+      "Hart Scraper Module"
+     ]
+    }
+   ]
+  }
+ ],
+ "contract_sites": {
+  "Headhunters scrap jobs (illegal)": [
+   "Arid Reach",
+   "Ashland",
+   "Fallow Field",
+   "Last Landings",
+   "Ostler's Claim",
+   "Rough Landing",
+   "Rustville",
+   "Seer's Canyon",
+   "The Golden Riviera",
+   "Windfall"
+  ],
+  "CFP clean-up jobs": [
+   "Blackrock Exchange",
+   "Bueno Ravine",
+   "Chawla's Beach",
+   "Sacren's Plot",
+   "Shepherd's Rest",
+   "Sunset Mesa",
+   "Yang's Place"
+  ]
+ }
+}
