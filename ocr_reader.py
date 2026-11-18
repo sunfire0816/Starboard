@@ -38,13 +38,17 @@ try {
     # enlarge small areas more (Windows reads up to 2600 pixels a side)
     if ($Scale -le 0) { $Scale = [Math]::Max(1, [Math]::Min(4, [Math]::Floor(2600 / [Math]::Max($W, $H)))) }
     # cleaned copy: gray, strong contrast, light text turned dark on white, then cut to pure black and white
-    $c = 2.4; $o = 0.5 * ($c - 1)
-    $cm = New-Object System.Drawing.Imaging.ColorMatrix(,[single[][]]@(
-        [single[]]@(-0.299 * $c, -0.299 * $c, -0.299 * $c, 0, 0),
-        [single[]]@(-0.587 * $c, -0.587 * $c, -0.587 * $c, 0, 0),
-        [single[]]@(-0.114 * $c, -0.114 * $c, -0.114 * $c, 0, 0),
-        [single[]]@(0, 0, 0, 1, 0),
-        [single[]]@((1 + $o), (1 + $o), (1 + $o), 0, 1)))
+    # (values worked out first: in PowerShell a comma binds tighter than *)
+    $c = 2.4
+    $kr = [single](-0.299 * $c); $kg = [single](-0.587 * $c); $kb = [single](-0.114 * $c)
+    $ko = [single](1 + 0.5 * ($c - 1))
+    $rows = [single[][]]::new(5)
+    $rows[0] = [single[]]@($kr, $kr, $kr, 0, 0)
+    $rows[1] = [single[]]@($kg, $kg, $kg, 0, 0)
+    $rows[2] = [single[]]@($kb, $kb, $kb, 0, 0)
+    $rows[3] = [single[]]@(0, 0, 0, 1, 0)
+    $rows[4] = [single[]]@($ko, $ko, $ko, 0, 1)
+    $cm = New-Object System.Drawing.Imaging.ColorMatrix -ArgumentList (,$rows)
     $attr = New-Object System.Drawing.Imaging.ImageAttributes
     $attr.SetColorMatrix($cm)
     $attr.SetThreshold(0.6)
@@ -65,7 +69,7 @@ try {
         $g = [System.Drawing.Graphics]::FromImage($bmp)
         $g.CopyFromScreen($X, $Y, 0, 0, $bmp.Size)
         $g.Dispose()
-        $BW = $W * $Scale; $BH = $H * $Scale
+        $BW = [int]($W * $Scale); $BH = [int]($H * $Scale)
         $big = New-Object System.Drawing.Bitmap $BW, $BH
         $g2 = [System.Drawing.Graphics]::FromImage($big)
         $g2.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
