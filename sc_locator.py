@@ -46,7 +46,7 @@ import edition  # noqa: E402
 
 EDITION = edition.load(core.HERE)  # plain Starboard, or e.g. the BSquaredTV edition
 APP_TITLE = EDITION["name"]
-APP_VERSION = "12.7.1"
+APP_VERSION = "12.7.2"
 POLL_MS = 400
 HEADER_H = 92
 DISCLAIMER = ("Starboard is an unofficial Star Citizen fan tool, made by the community for the community. It is not affiliated with, endorsed by or sponsored by the Cloud Imperium group of companies. Star Citizen\u00ae, Squadron 42\u00ae, Roberts Space Industries\u00ae and Cloud Imperium\u00ae are registered trademarks of Cloud Imperium Rights LLC. All game content, names and images belong to Cloud Imperium Games and Roberts Space Industries. Other data belongs to its sources, credited below.")
