@@ -1735,6 +1735,25 @@ class App:
                       font=(self.F_UI, 9, "bold"), tags="status")
         c.create_text(w - bw + 18, 7 + 26 * S, anchor="nw", text=sub, fill=MUTED,
                       font=(self.F_MONO, 8), tags="status")
+        ref = self.referral()
+        if ref:
+            fcode = (self.F_MONO, 11, "bold")
+            if getattr(self, "_ref_measure", None) is None:
+                self._ref_measure = tkfont.Font(family=self.F_MONO, size=11, weight="bold")
+            rw = max(self._ref_measure.measure(ref[0]), 90) + 28
+            x1 = w - bw - 18
+            x0 = x1 - rw
+            c.create_polygon(round_points(x0, 10, x1, 10 + 40 * S, 12), smooth=True, fill=PLATE, outline=ORANGE,
+                             tags=("status", "referral"))
+            c.create_text(x0 + 14, 7 + 10 * S, anchor="nw", text="REFERRAL CODE", fill=MUTED,
+                          font=(self.F_UI, 7, "bold"), tags=("status", "referral"))
+            c.create_text(x0 + 14, 7 + 22 * S, anchor="nw", text=ref[0], fill=ORANGE, font=fcode,
+                          tags=("status", "referral"))
+            if not getattr(self, "_ref_bound", False):
+                c.tag_bind("referral", "<Button-1>", lambda e: self._referral_copy())
+                c.tag_bind("referral", "<Enter>", lambda e: c.configure(cursor="hand2"))
+                c.tag_bind("referral", "<Leave>", lambda e: c.configure(cursor=""))
+                self._ref_bound = True
 
     def _draw_compass(self, bearing, label, color=GREEN):
         c = self.compass
@@ -9998,6 +10017,24 @@ class App:
                                      wraplength=740)
         self.lbl_set_msg.pack(anchor="w", pady=(2, 0))
         parent = self._scrollable(parent)
+        if EDITION.get("referral"):
+            self._section(parent, "referral code", ORANGE)
+            r = tk.Frame(parent, bg=PANEL)
+            r.pack(fill="x", pady=(2, 2))
+            self._lbl(r, "CODE", 7, MUTED, bold=True).pack(side="left")
+            self.set_ref_code = tk.StringVar(value=st.get("referral_code", ""))
+            e = ttk.Entry(r, textvariable=self.set_ref_code, width=22)
+            e.pack(side="left", padx=(6, 16))
+            self._lbl(r, "LINE UNDER IT", 7, MUTED, bold=True).pack(side="left")
+            self.set_ref_note = tk.StringVar(value=st.get("referral_note", ""))
+            e2 = ttk.Entry(r, textvariable=self.set_ref_note, width=30)
+            e2.pack(side="left", padx=(6, 0))
+            for w_ in (e, e2):
+                w_.bind("<KeyRelease>", lambda ev: self._referral_save())
+            self._tip(e2, "Optional, shown next to the code in the overlay, like \"Use it when you sign up\".")
+            self._lbl(parent, "Your Star Citizen referral code shows at the top of Starboard (click it to copy) "
+                              "and in the overlay (SETTINGS > OVERLAY > REFERRAL CODE). Leave it empty to hide it.",
+                      8, MUTED, wraplength=700).pack(anchor="w")
         self._section(parent, "text", CYAN)
         r = tk.Frame(parent, bg=PANEL)
         r.pack(fill="x", pady=(2, 2))
@@ -10885,11 +10922,34 @@ class App:
 
     OVERLAY_PARTS = [("nav", "Position and target"), ("run", "Hauling run"), ("scan", "Signature scans"),
                      ("refinery", "Refinery timers"), ("contract", "Current contracts"),
-                     ("earnings", "Session earnings"), ("belt", "Belt route"), ("salvage", "Salvage hold")]
+                     ("earnings", "Session earnings"), ("belt", "Belt route"), ("salvage", "Salvage hold")] + \
+        ([("referral", "Referral code")] if EDITION.get("referral") else [])
+
+    def referral(self):
+        """(code, note) when this edition shows a referral code and one is set, else None."""
+        if not EDITION.get("referral"):
+            return None
+        st = self._settings()
+        code = (st.get("referral_code") or "").strip()
+        return (code, (st.get("referral_note") or "").strip()) if code else None
+
+    def _referral_copy(self):
+        ref = self.referral()
+        if ref:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(ref[0])
+            self._hk_say(f"Copied referral code {ref[0]}", ok=True)
 
     def overlay_parts(self):
         c = self._settings().get("overlay_parts") or {}
-        return {k: c.get(k, k in ("nav", "run", "scan", "belt", "salvage")) for k, _l in self.OVERLAY_PARTS}
+        return {k: c.get(k, k in ("nav", "run", "scan", "belt", "salvage", "referral")) for k, _l in self.OVERLAY_PARTS}
+
+    def _referral_save(self):
+        self._save_setting("referral_code", self.set_ref_code.get().strip().upper())
+        self._save_setting("referral_note", self.set_ref_note.get().strip())
+        self._draw_header()
+        if self.overlay:
+            self.overlay.refresh()
 
     def _overlay_parts_save(self):
         self._save_setting("overlay_parts", {k: v.get() for k, v in self.ov_vars.items()})
@@ -11503,6 +11563,14 @@ class Overlay(tk.Toplevel):
                                 f"{ledger.short_money(st['per_hour'])}/h", GREEN if st["net"] >= 0 else RED)]
         return out
 
+    def _draw_referral(self, ref, y0, y1):
+        c, F, M, w = self.c, self.app.F_UI, self.app.F_MONO, self.W
+        code, note = ref
+        self._box(y0, y1, "REFERRAL CODE", ORANGE)
+        c.create_text(14, y0 + 22, anchor="nw", text=code, fill=ORANGE, font=(M, 12, "bold"))
+        if note:
+            c.create_text(w - 14, y0 + 25, anchor="ne", text=clip_text(note, 30), fill=FG, font=(F, 8, "bold"))
+
     def _draw_list(self, key, rows, y0, y1):
         c, F, M, w = self.c, self.app.F_UI, self.app.F_MONO, self.W
         title = {"refinery": "REFINERY", "contract": "CONTRACTS", "earnings": "EARNINGS", "salvage": "SALVAGE HOLD",
@@ -11534,6 +11602,9 @@ class Overlay(tk.Toplevel):
                 stack.append((k, 30 + 18 * len(lists[k])))
         if scan:
             stack.append(("scan", 58))
+        ref = app.referral() if parts.get("referral") else None
+        if ref:
+            stack.append(("referral", 50))
         total_h = max(40, nav_h + sum(hh for _k, hh in stack))
         if int(c.cget("height")) != total_h:
             c.configure(height=total_h)
@@ -11544,6 +11615,8 @@ class Overlay(tk.Toplevel):
                 self._draw_run(run, y, y + hh)
             elif k == "scan":
                 self._draw_scan(scan, y, y + hh)
+            elif k == "referral":
+                self._draw_referral(ref, y, y + hh)
             else:
                 self._draw_list(k, lists[k], y, y + hh)
             y += hh
