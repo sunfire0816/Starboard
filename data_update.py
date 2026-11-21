@@ -22,6 +22,7 @@ import csv
 import datetime as dt
 import io
 import json
+import math
 import os
 import re
 import shutil
@@ -358,7 +359,7 @@ def get_starmap(log):
             locs += got
         except Exception:
             pass  # locations are a bonus; containers are what matter
-    return bodies, locs, om, extra
+    return bodies, locs, om, extra, starmap_pyro(items)
 
 
 def merge_extra_pois(extra, vt_bodies, vt_locs, log=print, max_offset_km=2.0):
@@ -510,6 +511,76 @@ def read_info(data_dir):
         return {}
 
 
+# ---------------------------------------------------------------- Pyro layout
+# VerseTime still has Pyro laid out as it was before Alpha 4.1: the game turned the
+# whole system by about 274.77 degrees around the star. StarMap has the current layout.
+PYRO_V_NOW = (-3912426.7345, -42758732.5976)   # Pyro V in km, from StarMap (Alpha 4.1)
+PYRO_NAMES = {"Pyro1": "Pyro I", "Pyro4": "Pyro IV", "Pyro5": "Pyro V", "Pyro6": "Terminus", "pyro3": "Bloom",
+              "Pyro2": "Monox", "Pyro-Stanton Jump Point": "Pyro-Stanton JP"}
+
+
+def starmap_pyro(items):
+    """Current Pyro planet, moon and asteroid cluster positions from StarMap /oc, in km."""
+    out = {"bodies": {}, "clusters": {}}
+    for it in items if isinstance(items, list) else []:
+        if it.get("System") != "Pyro":
+            continue
+        raw, typ = str(it.get("ObjectContainer") or ""), it.get("Type")
+        pos = (_num(it.get("XCoord")) / 1000.0, _num(it.get("YCoord")) / 1000.0, _num(it.get("ZCoord")) / 1000.0)
+        if typ == "Planet" and _num(it.get("BodyRadius")) > 0:
+            out["bodies"][PYRO_NAMES.get(raw, raw)] = pos
+        elif raw.startswith("Cluster "):
+            out["clusters"][raw] = pos
+    return out
+
+
+def _rot(x, y, deg):
+    a = math.radians(deg)
+    return x * math.cos(a) - y * math.sin(a), x * math.sin(a) + y * math.cos(a)
+
+
+def align_pyro(bodies, locs, current=None, log=print):
+    """Turn VerseTime's Pyro rows into the current layout, in place.
+    Returns the angle used (0 when VerseTime already matches the game)."""
+    by = {b["name"]: b for b in bodies}
+    pv = by.get("Pyro V")
+    if not pv:
+        return 0.0
+    now = (current or {}).get("bodies", {}).get("Pyro V") or PYRO_V_NOW
+    old_a = math.degrees(math.atan2(_num(pv["coordinateY"]), _num(pv["coordinateX"])))
+    new_a = math.degrees(math.atan2(now[1], now[0]))
+    theta = (new_a - old_a) % 360
+    if min(theta, 360 - theta) < 0.5:
+        return 0.0
+    rotating = {"Planet", "Moon", "Planetoid"}
+    kinds = {}
+    for b in bodies:
+        if b.get("parentStar") != "Pyro":
+            continue
+        kinds[b["name"]] = b.get("type")
+        x, y = _rot(_num(b["coordinateX"]), _num(b["coordinateY"]), theta)
+        b["coordinateX"], b["coordinateY"] = f"{x:.3f}", f"{y:.3f}"
+        if b.get("type") in rotating:
+            b["rotationCorrection"] = f"{(_num(b.get('rotationCorrection')) + theta) % 360:.3f}"
+        cur = (current or {}).get("bodies", {}).get(b["name"])
+        if cur:  # StarMap knows where it is now
+            b["coordinateX"], b["coordinateY"], b["coordinateZ"] = (f"{v:.3f}" for v in cur)
+    kinds["Pyro"] = "Star"
+    clusters = (current or {}).get("clusters", {})
+    for r in locs:
+        if r.get("parentStar") != "Pyro" or kinds.get(r.get("parentBody")) in rotating:
+            continue  # places on a planet or moon turn with it
+        if r.get("coordinateX") in (None, ""):
+            continue
+        if r["name"] in clusters and r.get("parentBody") == "Pyro":
+            r["coordinateX"], r["coordinateY"], r["coordinateZ"] = (f"{v:.3f}" for v in clusters[r["name"]])
+            continue
+        x, y = _rot(_num(r["coordinateX"]), _num(r["coordinateY"]), theta)
+        r["coordinateX"], r["coordinateY"] = f"{x:.3f}", f"{y:.3f}"
+    log(f"Pyro: turned VerseTime's layout by {theta:.2f} degrees to match the game.")
+    return theta
+
+
 def run_update(data_dir, log=print, use_starmap=True, _vt=None, _sm=None, _lf=None):
     """Download, check, back up and write. Returns a report dict.
     _vt / _sm let tests inject data instead of downloading."""
@@ -537,6 +608,7 @@ def run_update(data_dir, log=print, use_starmap=True, _vt=None, _sm=None, _lf=No
         got, lf_notes = merge_extra_pois(lf, vt_bodies, vt_locs, log)
         extra_locs += got
         notes += [n.replace("StarMap", "Location Finder") for n in lf_notes]
+    align_pyro(vt_bodies, vt_locs, sm[4] if sm and len(sm) > 4 else None, log)
     if sm:
         nyx_bodies, nyx_locs, om = sm[:3]
         if len(sm) > 3 and sm[3]:

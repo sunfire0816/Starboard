@@ -915,7 +915,7 @@ class App:
         self.filter_text = tk.StringVar()
         self.filter_type = tk.StringVar(value="All types")
         self.ore_body = tk.StringVar()
-        self.last_system = "Stanton"
+        self.last_system = self._settings().get("last_system") or "Stanton"  # where you were last time
         self.prev_here = None
         self.motion = None
         self.overlay = None
@@ -1849,6 +1849,8 @@ class App:
 
     def _update(self, g, t=None):
         system = self._system_for(g)
+        if t is None and system != self.last_system:
+            self._save_setting("last_system", system)
         self.last_system = system
         new = self.world.locate(g, t, system)
         self.stale = t is None and self.world.is_stale(self.here, new)

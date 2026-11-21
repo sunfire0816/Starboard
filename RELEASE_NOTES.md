@@ -1,6 +1,6 @@
 # Starboard 12.8
 
-A bigger update for salvagers, plus a fix for the screen reader.
+A bigger update for salvagers, plus fixes for Pyro and the screen reader.
 
 ## New: salvage, rebuilt
 
@@ -15,6 +15,7 @@ The SALVAGE tab now has six parts:
 
 ## Fixed
 
+- **No position lock in Pyro:** after jumping to Pyro, Starboard kept saying you were in Stanton at the Pyro jump point. Its Pyro map was the old layout from before Alpha 4.1, when the game turned the whole system around the star. Pyro now matches the game (planets, moons, stations, Lagrange points and asteroid clusters), and DATA UPDATE keeps it that way. Starboard also remembers which system you were in between launches.
 - **Screen reader error:** starting the screen reader for scan signatures showed "Method invocation failed because [System.Object[]] does not contain a method named 'op_Multiply'" and read nothing. It works again, with the reading improvements from 12.7.1.
 
 ## Install or update

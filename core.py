@@ -66,6 +66,7 @@ ROTATING_TYPES = ("Planet", "Moon", "Planetoid")
 # Static objects (stations, jump points, Lagrange points) this close decide the
 # system when you are not near any planet or moon.
 SYSTEM_HINT_RANGE_KM = 2_000_000
+SYSTEM_SWITCH_KM = 250_000   # this close to another system's object means you are in that system
 # The rotation corrections in the data are measured for day/night (sun) maths, which
 # counts longitude from a different axis. For placing coordinates the planet's real
 # spin is 90 degrees further on. Confirmed against in-game /showlocation readings at
@@ -514,14 +515,19 @@ class World:
             if hint in [s for _, s in hits]:
                 return hint
             return min(hits)[1]
-        best = None
+        near = {}
         for s in self.systems():
-            near = self.nearest_space_objects(g, utcnow(), s, n=1)
-            if near and near[0][0] < SYSTEM_HINT_RANGE_KM and (best is None or near[0][0] < best[0]):
-                best = (near[0][0], s)
-        if best:
-            return best[1]
-        return hint or "Stanton"
+            n = self.nearest_space_objects(g, utcnow(), s, n=1)
+            if n and n[0][0] < SYSTEM_HINT_RANGE_KM:
+                near[s] = n[0][0]
+        if not near:
+            return hint or "Stanton"
+        best = min(near, key=near.get)
+        # in open space, stay in the system you were in unless you are right next to
+        # something in another one (just out of a jump point, say)
+        if hint and best != hint and near[best] > SYSTEM_SWITCH_KM and hint in self.systems():
+            return hint
+        return best
 
     def zones(self):
         return self.ore_meta.get("_zones", {})
