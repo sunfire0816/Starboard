@@ -10027,11 +10027,11 @@ class App:
             e.pack(side="left", padx=(6, 16))
             self._lbl(r, "LINE UNDER IT", 7, MUTED, bold=True).pack(side="left")
             self.set_ref_note = tk.StringVar(value=st.get("referral_note", ""))
-            e2 = ttk.Entry(r, textvariable=self.set_ref_note, width=30)
+            e2 = ttk.Entry(r, textvariable=self.set_ref_note, width=46)
             e2.pack(side="left", padx=(6, 0))
             for w_ in (e, e2):
                 w_.bind("<KeyRelease>", lambda ev: self._referral_save())
-            self._tip(e2, "Optional, shown next to the code in the overlay, like \"Use it when you sign up\".")
+            self._tip(e2, "Optional, shown under the code in the overlay. Long text scrolls like the tickers.")
             self._lbl(parent, "Your Star Citizen referral code shows at the top of Starboard (click it to copy) "
                               "and in the overlay (SETTINGS > OVERLAY > REFERRAL CODE). Leave it empty to hide it.",
                       8, MUTED, wraplength=700).pack(anchor="w")
@@ -11568,8 +11568,52 @@ class Overlay(tk.Toplevel):
         code, note = ref
         self._box(y0, y1, "REFERRAL CODE", ORANGE)
         c.create_text(14, y0 + 22, anchor="nw", text=code, fill=ORANGE, font=(M, 12, "bold"))
-        if note:
-            c.create_text(w - 14, y0 + 25, anchor="ne", text=clip_text(note, 30), fill=FG, font=(F, 8, "bold"))
+        if not note:
+            return
+        # the line under the code scrolls like the tickers when it is too long to fit
+        cw = w - 28
+        cv = getattr(self, "_ref_cv", None)
+        if cv is None:
+            cv = self._ref_cv = tk.Canvas(c, width=cw, height=18, bg=PANEL, highlightthickness=0, bd=0)
+            self._ref_text = None
+            cv.bind("<ButtonPress-1>", self._start_drag)  # dragging the overlay works on the strip too
+            cv.bind("<B1-Motion>", self._drag)
+            cv.bind("<ButtonRelease-1>", lambda e: self._save_pos())
+        c.create_window(14, y0 + 44, anchor="nw", window=cv)
+        if note != self._ref_text:
+            self._ref_text = note
+            cv.delete("all")
+            font = (F, 9, "bold")
+            tid = cv.create_text(0, 1, anchor="nw", text=note, fill=FG, font=font)
+            x0, _a, x1, _b = cv.bbox(tid)
+            self._ref_tw = x1 - x0
+            if self._ref_tw > cw:
+                cv.delete("all")
+                unit = note + "     ·     "
+                tid = cv.create_text(0, 1, anchor="nw", text=unit, fill=FG, font=font)
+                x0, _a, x1, _b = cv.bbox(tid)
+                self._ref_span = x1 - x0
+                cv.create_text(self._ref_span, 1, anchor="nw", text=unit, fill=FG, font=font)
+                self._ref_x = 0.0
+                if not getattr(self, "_ref_job", None):
+                    self._ref_job = self.after(33, self._ref_scroll)
+
+    def _ref_scroll(self):
+        self._ref_job = None
+        cv = getattr(self, "_ref_cv", None)
+        try:
+            if cv is None or not cv.winfo_exists() or self._ref_tw <= int(cv.cget("width")):
+                return
+        except tk.TclError:
+            return
+        step = 0 if self.app.reduce_flash else 1.2
+        self._ref_x -= step
+        if self._ref_x <= -self._ref_span:
+            cv.move("all", self._ref_span - step, 0)
+            self._ref_x += self._ref_span
+        else:
+            cv.move("all", -step, 0)
+        self._ref_job = self.after(33, self._ref_scroll)
 
     def _draw_list(self, key, rows, y0, y1):
         c, F, M, w = self.c, self.app.F_UI, self.app.F_MONO, self.W
@@ -11604,7 +11648,7 @@ class Overlay(tk.Toplevel):
             stack.append(("scan", 58))
         ref = app.referral() if parts.get("referral") else None
         if ref:
-            stack.append(("referral", 50))
+            stack.append(("referral", 68 if ref[1] else 48))
         total_h = max(40, nav_h + sum(hh for _k, hh in stack))
         if int(c.cget("height")) != total_h:
             c.configure(height=total_h)
