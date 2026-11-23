@@ -10792,6 +10792,9 @@ class App:
                     self._alert("servers", "Servers", segs[1][0].capitalize() + ". See status.robertsspaceindustries.com",
                                 bad=True)
         tags = {"video": ("VIDEO", RED), "server": ("SERVERS", TEAL), "post": ("COMM-LINK", PURPLE)}
+        items = ticker.recent(items)
+        if not items:
+            rows.append(([("NEWS", PURPLE), (f"Nothing new in the last {ticker.NEWS_DAYS} days", MUTED)], None))
         for it in items[:24]:
             try:
                 d = time.strftime("%b %d", time.strptime(it["date"], "%Y-%m-%d")).upper()
@@ -10803,8 +10806,8 @@ class App:
         self.tick_news.set_items(rows)
         self._tip(self.tick_news, "Server status, patch deployments and incidents from RSI's status page, new "
                                   "videos from RSI's YouTube channel, and Comm-Link posts (through the Star Citizen "
-                                  "Wiki, which can be a week or two behind). Checked every 10 minutes. Hover to "
-                                  "pause, click an item to open it.")
+                                  "Wiki, which can be a week or two behind), from today and the last 14 days. "
+                                  "Checked every 10 minutes. Hover to pause, click an item to open it.")
 
     # -- desktop shortcut for Starboard.exe
     def _make_shortcut(self, quiet=True):

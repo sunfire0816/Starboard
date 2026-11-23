@@ -213,6 +213,26 @@ def fetch_all(timeout=20):
     return items, status, errors
 
 
+NEWS_DAYS = 14   # the NEWS ticker shows today and the 14 days before it
+
+
+def recent(items, days=NEWS_DAYS, today=None):
+    """Only news from today and the last `days` days (by local date). Server problems
+    that are still open stay, however old."""
+    import datetime as _dt
+    today = today or _dt.date.today()
+    first = (today - _dt.timedelta(days=days)).isoformat()
+    out = []
+    for i in items:
+        if i.get("kind") == "server" and i.get("resolved") is False:
+            out.append(i)
+            continue
+        d = i.get("date") or (time.strftime("%Y-%m-%d", time.localtime(i["ts"])) if i.get("ts") else "")
+        if d and d >= first:
+            out.append(i)
+    return out
+
+
 def news_path(user_dir):
     return os.path.join(user_dir, "wiki", "news.json")
 

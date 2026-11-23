@@ -13,6 +13,10 @@ The SALVAGE tab now has six parts:
 - **RUNS:** every salvage trip, with each stop, SCU, aUEC, time and aUEC per hour, plus totals for today, the last 7 days and all time.
 - **SETUP:** salvage ships with their heads and stock modules, every scraper module compared (speed, beam size, how much material it keeps, price and where to buy), and module picks for your goal.
 
+## Changed
+
+- **NEWS ticker:** shows only today and the last 14 days, so old videos and posts no longer scroll by. Server problems that are still going on stay until they are fixed.
+
 ## Fixed
 
 - **No position lock in Pyro:** after jumping to Pyro, Starboard kept saying you were in Stanton at the Pyro jump point. Its Pyro map was the old layout from before Alpha 4.1, when the game turned the whole system around the star. Pyro now matches the game (planets, moons, stations, Lagrange points and asteroid clusters), and DATA UPDATE keeps it that way. Starboard also remembers which system you were in between launches.
